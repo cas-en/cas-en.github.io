@@ -18,7 +18,7 @@ arcsin: "casin", arccos: "cacos", arctan: "catan", arccot: "cacot",
 asinh: "casinh", acosh: "cacosh", atanh: "catanh", acoth: "cacoth",
 arsinh: "casinh", arcosh: "cacosh", artanh: "catanh", arcoth: "cacoth",
 gamma: "cgamma", fac: "cfac", sum: "csum", prod: "cprod",
-diff: "cdiff", int: "cint", pow: "citerate"
+diff: "cdiff", int: "cint", pow: "citerate", img: "cplot_img"
 };
 
 var cftab = {
@@ -133,6 +133,23 @@ function cpow(a,b){
         var phi1 = lnr*b.im+phi*b.re;
         return {re: r1*Math.cos(phi1), im: r1*Math.sin(phi1)};
     }
+}
+
+function cpow2(z){
+    return {re: z.re*z.re-z.im*z.im, im: 2*z.re*z.im};
+}
+
+function cpown(z,n){
+    var y = z;
+    n--;
+    while(n>0){
+        if(n%2==0){
+            n/=2; z = cpow2(z);
+        }else{
+            n--; y = cmul(y,z);
+        }
+    }
+    return y;
 }
 
 function csqrt(z){
@@ -522,7 +539,22 @@ function ccompile_expression(a,t,context){
             }
             a.push(")");
         }else if(cglobal_ftab.hasOwnProperty(op)){
-            ccompile_application(a,cglobal_ftab[op],t,context);
+            var n = t[2];
+            if(op==="^" && typeof n=="number" &&
+                Number.isInteger(n) && n>0 && n<40
+            ){
+                if(n==1){
+                    ccompile_expression(a,t[1],context);
+                }else if(n==2){
+                    ccompile_application(a,"cpow2",["",t[1]],context);
+                }else{
+                    a.push("cpown(");
+                    ccompile_expression(a,t[1],context);
+                    a.push(","+n+")");
+                }
+            }else{
+                ccompile_application(a,cglobal_ftab[op],t,context);
+            }
         }else{
             ccompile_expression(a,op,context);
             ccompile_application(a,"",t,context);
@@ -656,7 +688,9 @@ async function cplot(gx,f,n,cond){
 }
 
 async function cplot_async(gx,f){
-    if(plot_refresh){
+    if(gx.sync_mode==true){
+        cplot(gx,f,1,false);
+    }else if(plot_refresh){
         plot_refresh = false;
         cplot(gx,f,20,false);
     }else{
@@ -692,12 +726,12 @@ function global_definition(t){
     }
 }
 
-function ccalc(){
+function calc(){
     calculate(ccompile);
 }
 
-function keys_ccalc(event){
-    if(event.keyCode==13) ccalc();
+function cplot_img(w,h){
+    return plot_img(w.re,h.re);
 }
 
 color_dark_axes = [80,80,80];

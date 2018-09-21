@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>plot</title>
   <script src = "js/plot.js"></script>
-  <script src = "js/cplot.js"></script>
+  <script src = "js/plot-complex.js"></script>
   <link rel="stylesheet" href="css/ui-dark.css">
 </head>
 <body>
@@ -31,7 +31,8 @@ onkeyup="keys(event);" value="z">
 <input type="button" value="x&minus;" onclick="xscale_dec()">
 <input type="button" value="y+" onclick="yscale_inc()">
 <input type="button" value="y&minus;" onclick="yscale_dec()">
-<input type="button" value="link" onclick="link()">
+<input type="button" value="link" onclick="link(true)">
+<input type="button" value="img" onclick="calc_img()">
 <select id="method">
 <option value="0" selected>HSL</option>
 <option value="1">HSL+grid</option>
@@ -40,8 +41,8 @@ onkeyup="keys(event);" value="z">
 </select>
 &nbsp;<a href="doc-complex.htm">help</a>
 <br><br>
-<input type="button" value="calculate" onclick="ccalc()">
-<input type="text" id="input-calc" onkeyup="keys_ccalc(event);">
+<input type="button" value="calculate" onclick="calc()">
+<input type="text" id="input-calc" onkeyup="keys_calc(event);">
 <div id="calc-out" class="mono"></div>
 </div>
 </table>

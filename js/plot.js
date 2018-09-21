@@ -42,7 +42,7 @@ var diff = diffh(0.001);
 var diff_operator = diffh_curry(0.001);
 
 var ftab = {
-    pi: Math.PI, tau: 2*Math.PI, e: Math.E, nan: NaN,
+    pi: Math.PI, tau: 2*Math.PI, e: Math.E, nan: NaN, inf: Infinity,
     deg: Math.PI/180, grad: Math.PI/180, gon: Math.PI/200,
     gc: GAMMA, angle: angle, t0: 0, t1: 2*Math.PI,
     abs: Math.abs, sgn: Math.sign, sign: Math.sign,
@@ -75,7 +75,8 @@ var ftab = {
     RF: RF, RC: RC, RJ: RJ, RD: RD,
     P: set_position, scale: set_scale,
     zeroes: zeroes, roots: zeroes,
-    map: map, filter: filter, freq: set_freq
+    map: map, filter: filter, freq: set_freq,
+    img: plot_img
 };
 
 function load_async(URL,callback){
@@ -138,7 +139,7 @@ function af(x0,y0,x1,y1){
 function sc(f,a,b,x){return f(a)+(f(b)-f(a))/(b-a)*(x-a);}
 function tg(f,a,x){return f(a)+diff(f,a)*(x-a);}
 function res(f,x,a,b){return a<=x && x<=b? f(x): NaN;}
-function map(f,a){return a.map(f);}
+function map(f,a){return a.map(function(x){return f(x);});}
 function filter(f,a){return a.filter(f);}
 
 function sum(a,b,f){
@@ -709,6 +710,16 @@ function str(x){
         return "["+x.map(str).join(", ")+"]";
     }else if(x instanceof Function){
         return "a function";
+    }else if(typeof x == "string"){
+        return x;
+    }else if(typeof x == "number"){
+        if(Number.isFinite(x)){
+            return x.toString().toUpperCase();
+        }else if(Number.isNaN(x)){
+            return "nan";
+        }else{
+            return x.toString().toLowerCase();
+        }
     }else if(x.hasOwnProperty("re")){
         var sep = x.im<0? "": "+";
         return [str(x.re),sep,str(x.im),"i"].join("");
@@ -782,12 +793,18 @@ function scan(s){
             a.push([SymbolIdentifier,id,line,col0]);
         }else if(isdigit(s[i])){
             var col0 = col;
-            var number = "";
-            while(i<n && (isdigit(s[i]) || s[i]=='.')){
-                number += s[i];
-                i++; col++;
+            var j = i;
+            while(i<n){
+                if(isdigit(s[i]) || s[i]=='.'){
+                    i++; col++;
+                }else if(s[i]=='E'){
+                    i++; col++;
+                    if(i<n && (s[i]=='+' || s[i]=='-')){i++; col++;}
+                }else{
+                    break;
+                }
             }
-            a.push([SymbolNumber,number,line,col0]);
+            a.push([SymbolNumber,s.slice(j,i),line,col0]);
         }else if(isspace(s[i])){
             if(s[i]=='\n'){line++; col=0;}
             else {col++;}
@@ -1550,26 +1567,42 @@ function clear_system(gx){
     system(gx,true);
 }
 
-function round_pretty(x){
-    var r = Math.abs(x);
-    if(r<1 && r!=0){
-        var m = Math.pow(10,4+Math.round(-lg(r)));
-        return Math.round(m*x)/m;
-    }else{
-        return Math.round(100000*x)/100000;
-    }
-}
-
-function float_str(x){
-    if(x<0){
-        return "\u2212"+round_pretty(Math.abs(x)).toString();
-    }else{
-        return round_pretty(x).toString();
-    }
-}
-
 function clamp(x,a,b){
     return Math.min(Math.max(x,a),b);
+}
+
+function ftos(x,m,a){
+    var minus = x<0;
+    x = Math.abs(x);
+    var n = Math.round(a+Math.max(0,lg(m)));
+    var s;
+    if(x<1E-5 && x!=0){
+        s = x.toExponential(Math.max(0,n+Math.round(lg(0.5*x)))).toUpperCase();
+    }else{
+        s = x.toFixed(n);
+    }
+    return minus?"\u2212"+s:s;
+}
+
+function strip_zeroes(s){
+    var n = s.length;
+    var point = false;
+    for(var i=0; i<n; i++){
+        if(s[i]=='.') point = true;
+        if(s[i]=='e' || s[i]=='E') return s;
+    }
+    if(!point) return s;
+    var k = n-1;
+    while(k>0){
+        if(s[k]=='.'){k--; break;}
+        else if(s[k]!='0') break;
+        k--;
+    }
+    return s.slice(0,k+1);
+}
+
+function ftos_strip(x,m){
+    return strip_zeroes(ftos(x,m,1));
 }
 
 function labels(gx){
@@ -1586,14 +1619,22 @@ function labels(gx){
     context.textAlign = "center";
     var bulky_pred = false;
     var char_max = gx.char_max;
+    var bulky2 = false;
     for(var x=xshift-xcount; x<=xshift+xcount; x++){
         if(x!=0){
             px = px0+Math.floor(gx.mx*x);
-            s = float_str(x/ax);
-            if(x%2==0 && (s.length>char_max || s.length>1 && bulky_pred)){
-                py_adjust=40;
+            s = strip_zeroes(ftos(x/ax,ax,1));
+            if(s.length>9) bulky2 = true;
+            if(bulky2){
+                if(mod(x,3)==1) py_adjust=22;
+                else if(mod(x,3)==2) py_adjust=40;
+                else py_adjust=58;
             }else{
-                py_adjust=22;
+                if(x%2==0 && (s.length>char_max || s.length>1 && bulky_pred)){
+                    py_adjust=40;
+                }else{
+                    py_adjust=22;
+                }
             }
             if(x/ax<0){px_adjust=4;} else{px_adjust=-1;}
             context.fillText(s,px-px_adjust,clamp(py0,10,h-44)+py_adjust);
@@ -1604,7 +1645,8 @@ function labels(gx){
     for(var y=yshift-ycount; y<=yshift+ycount; y++){
         if(y!=0){
             py = py0+Math.floor(gx.mx*y);
-            s = float_str(-y/ay);
+            s = ftos(-y/ay,ay/4,1);
+            if(ay<2){s=strip_zeroes(s);}
             context.fillText(s,clamp(px0-10,28+10*(s.length-2),w-16),py+6);
         }
     }
@@ -1797,25 +1839,37 @@ async function vplot(gx,f,d,cond,color){
 }
 
 async function plot_async(gx,f,color){
-    fplot(gx,f,0.01,false,color);
-    while(busy){await sleep(40);}
-    await sleep(40);
-    fplot(gx,f,0.001,true,color);
-    fplot(gx,f,0.0001,true,color);
+    if(gx.sync_mode==true){
+        fplot(gx,f,0.0002,false,color);
+    }else{
+        fplot(gx,f,0.01,false,color);
+        while(busy){await sleep(40);}
+        await sleep(40);
+        fplot(gx,f,0.001,true,color);
+        fplot(gx,f,0.0001,true,color);
+    }
 }
 
 async function plot_zero_set_async(gx,f,color){
-    plot_zero_set(gx,f,10,false,color);
-    while(busy){await sleep(40);}
-    await sleep(40);
-    plot_zero_set(gx,f,400,true,color);
+    if(gx.sync_mode==true){
+        plot_zero_set(gx,f,400,false,color);
+    }else{
+        plot_zero_set(gx,f,10,false,color);
+        while(busy){await sleep(40);}
+        await sleep(40);
+        plot_zero_set(gx,f,400,true,color);
+    }
 }
 
 async function vplot_async(gx,f,color){
-    vplot(gx,f,0.01,false,color);
-    while(busy){await sleep(40);}
-    await sleep(40);
-    vplot(gx,f,0.001,true,color);
+    if(gx.sync_mode==true){
+        vplot(gx,f,0.001,false,color);
+    }else{
+        vplot(gx,f,0.01,false,color);
+        while(busy){await sleep(40);}
+        await sleep(40);
+        vplot(gx,f,0.001,true,color);
+    }
 }
 
 function hsl_to_rgb(H,S,L){
@@ -2400,15 +2454,27 @@ function encode_query(s){
     return a.join("");
 }
 
-function link(){
+function upper_str(x){
+    return x.toString().toUpperCase();
+}
+
+function link(position){
     var s = document.getElementById("inputf").value;
     var out = document.getElementById("calc-out");
     var url = window.location.href.split("?")[0];
     var scale = (xscale.index==yscale.index?
-        (xscale.index==index0?"":";;scale("+1/ax+")"):
-        ";;scale("+1/ax+","+1/ay+")"
+        (xscale.index==index0?"":";;scale("+upper_str(1/ax)+")"):
+        ";;scale("+upper_str(1/ax)+","+upper_str(1/ay)+")"
     );
-    out.innerHTML = "<p style='font-size: 80%'>"+url+"?"+encode_query(s+scale);
+    var pos = "";
+    var t = graphics.pos;
+    if(position && (t[0]!=0 || t[1]!=0)){
+        var n = Math.max(0,1+Math.round(Math.log(ax)));
+        t[0] = t[0].toFixed(n);
+        t[1] = t[1].toFixed(n);
+        pos = (scale==""?";;":",")+"P("+t[0]+","+t[1]+")";
+    }
+    out.innerHTML = "<p style='font-size: 80%'>"+url+"?"+encode_query(s+scale+pos);
 }
 
 async function update_on_resize(){
@@ -2416,6 +2482,36 @@ async function update_on_resize(){
     if(graphics.w!=window.innerWidth || graphics.h!=window.innerHeight){
         main();
     }
+}
+
+function plot_img(w,h){
+    if(w==undefined) w = 360;
+    if(h==undefined) h = Math.round(w/1.5);
+    var canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    var gx = init(canvas,w,h);
+    new_point(gx);
+    gx.sync_mode = true;
+
+    var t = get_pos(graphics);
+    set_pos(gx,t);
+
+    clear_system(gx);
+    flush(gx);
+    var last_gx = graphics;
+    graphics = gx;
+    update(gx);
+    graphics = last_gx;
+    var s = canvas.toDataURL("image/png");
+    var img = "<img align=\"top\" src=\""+s+"\"/>";
+    return img;
+}
+
+function calc_img(){
+    var input = document.getElementById("input-calc");
+    input.value = "img(540,360)";
+    calc();
 }
 
 window.onload = function(){
