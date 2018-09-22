@@ -1,13 +1,37 @@
 
 "use strict";
 
-ftab["w"] = 10;
 ftab["u0"] = 0;
 ftab["u1"] = 2*Math.PI;
 ftab["v0"] = 0;
 ftab["v1"] = Math.PI;
+
+ftab["w"] = set_w;
 ftab["d"] = set_distance;
+ftab["mesh"] = set_mesh;
+ftab["tile"] = set_tile;
 ftab["alpha"] = 0.94;
+
+function set_w(wx,wy){
+    if(wy==undefined) wy=wx;
+    grx = Array.isArray(wx)?wx:[-wx,wx];
+    gry = Array.isArray(wy)?wy:[-wy,wy];
+}
+
+function set_mesh(sx,sy){
+    if(sy==undefined) sy=sx;
+    gstep = [sx,sy];
+}
+
+function set_tile(m){
+    gtile = m;
+}
+
+var pftab = ftab;
+var grx = [-10,10];
+var gry = [-10,10];
+var gstep = [1,1];
+var gtile = 1;
 
 var new_proj = new_proj_parallel;
 var proj_distance = 100;
@@ -17,6 +41,10 @@ var plot_refresh = false;
 function refresh(gx){
     plot_refresh = true;
     update(gx);
+}
+
+function float_re(x){
+    return typeof x=="object"?x.re:x;
 }
 
 var theta_max = Math.atan(Math.sqrt(2));
@@ -336,8 +364,11 @@ function system_xyz(gx,proj,wx){
     labels(gx,proj,ax);
 }
 
-function plot_sf(gx,f,d,step){
-    if(d==undefined) d=0.5;
+function mesh_cond(x){
+    return Math.abs(x-Math.floor(x+0.5))<0.001;
+}
+
+function plot_sf(gx,f,d,xstep,ystep){
     var x,y,z00,z01,z10,z11,v;
     var p0,p1,p2,p3;
     var context = gx.context;
@@ -347,14 +378,16 @@ function plot_sf(gx,f,d,step){
 
     var dx = d/ax;
     var dy = d/ax;
-    var wx = ftab["w"]/ax;
-    var wy = wx;
+    var x0 = grx[0]/ax;
+    var x1 = grx[1]/ax;
+    var y0 = gry[0]/ax;
+    var y1 = gry[1]/ax;
 
     var a = gx.tile_buffer;
     var kx = 0;
-    for(x = -wx; x<wx; x+=dx){
+    for(x = x0; x<x1; x+=dx){
         var ky = 0;
-        for(y = -wy; y<wy; y+=dy){
+        for(y = y0; y<y1; y+=dy){
             z00 = f(x,y);
             z01 = f(x,y+dy);
             z11 = f(x+dx,y+dy);
@@ -365,7 +398,7 @@ function plot_sf(gx,f,d,step){
             p3 = proj(x+dx,y,z10);
             v = [dy*(z00-z10),dx*(z00-z01),dx*dy];
             a.push([s*y-c*x,p0,p1,p2,p3,z00,
-                kx%step==0,ky%step==0,v]);
+                mesh_cond(kx/xstep),mesh_cond(ky/ystep),v]);
             ky++;
         }
         kx++;
@@ -376,8 +409,7 @@ function vector_product(vx,vy,vz,wx,wy,wz){
     return [vy*wz-vz*wy, vz*wx-vx*wz, vx*wy-vy*wx];
 }
 
-function plot_psf(gx,f,d,step){
-    if(d==undefined) d=0.5;
+function plot_psf(gx,f,d,ustep,vstep){
     var u,v,p00,p01,p10,p11,e;
     var p0,p1,p2,p3;
     var context = gx.context;
@@ -413,7 +445,7 @@ function plot_psf(gx,f,d,step){
                 p01[0]-p00[0],p01[1]-p00[1],p01[2]-p00[2]
             );
             a.push([-gxt-gyt,p0,p1,p2,p3,p00[2],
-                ku%step==0,kv%step==0,e]);
+                mesh_cond(ku/ustep),mesh_cond(kv/vstep),e]);
             kv++;
         }
         ku++;
@@ -421,21 +453,22 @@ function plot_psf(gx,f,d,step){
 }
 
 function plot_node(gx,t,index){
+    var m = gtile;
     if(Array.isArray(t) && t[0]==="[]"){
         var f = compile(t,["u","v"]);
         if(plot_refresh){
-            plot_psf(gx,f,1,1);
+            plot_psf(gx,f,1,1,1);
             plot_refresh = false;
         }else{
-            plot_psf(gx,f,0.5,2);
+            plot_psf(gx,f,m*0.5,gstep[0]*2/m,gstep[1]*2/m);
         }
     }else{
         var f = compile(t,["x","y"]);
         if(plot_refresh){
-            plot_sf(gx,f,1,1);
+            plot_sf(gx,f,1,1,1);
             plot_refresh = false;
         }else{
-            plot_sf(gx,f,0.25,4);
+            plot_sf(gx,f,m*0.25,gstep[0]*4/m,gstep[1]*4/m);
         }
     }
 }
@@ -445,11 +478,13 @@ function plot_node_relief(gx,t,index){
     var f = function(x,y){
         return fc({re: x, im: y}).re;
     };
+    pftab = cftab;
+    var m = gtile;
     if(plot_refresh){
-        plot_sf(gx,f,1,1);
+        plot_sf(gx,f,1,1,1);
         plot_refresh = false;
     }else{
-        plot_sf(gx,f,0.25,4);
+        plot_sf(gx,f,m*0.25,gstep[0]*4/m,gstep[1]*4/m);
     }
 }
 
@@ -487,7 +522,7 @@ function plot(gx){
         }
     }
 
-    var alpha = Math.round(ftab["alpha"]*255);
+    var alpha = Math.round(float_re(pftab["alpha"])*255);
     flush_tile_buffer(gx,alpha);
     system_xyz(gx,10/ax);
 }
