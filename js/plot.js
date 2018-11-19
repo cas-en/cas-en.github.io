@@ -1771,6 +1771,15 @@ async function fplot(gx,f,d,cond,color){
     busy = false;
 }
 
+function bisection_fast(N,state,f,a,b){
+    var m;
+    for(var k=0; k<N; k++){
+        m = 0.5*(a+b);
+        if(f(m)<0==state) a=m; else b=m;
+    }
+    return m;
+}
+
 async function plot_zero_set(gx,f,n,cond,color){
     var pid = {};
     var index = pid_stack.length;
