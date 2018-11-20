@@ -321,7 +321,7 @@ function flush_tile_buffer(gx,alpha,lw){
     var t,p0,p1,p2,p3;
 
     a.sort(function(x,y){
-        return x[1]<y[1];
+        return y[1]-x[1];
     });
 
     var colorfn = new_light_source(gx.phi,[1,0,0.8]);
