@@ -4,14 +4,19 @@
 var graphics;
 var ax=1;
 var ay=1;
+var az=1;
 var index0 = 10000;
 var xscale = {index: index0};
 var yscale = {index: index0};
+var zscale = {index: index0};
 var hud_display = false;
 var GAMMA = 0.57721566490153286;
+var PHI = 1.618033988749895;
 var dark = false;
 var ftab_extension_loaded = false;
 var async_continuation = undefined;
+var recursion_table = {};
+var post_app_stack = [];
 var freq = 1;
 
 var color_bg = [255,255,255,255];
@@ -44,7 +49,7 @@ var diff_operator = diffh_curry(0.001);
 var ftab = {
     pi: Math.PI, tau: 2*Math.PI, e: Math.E, nan: NaN, inf: Infinity,
     deg: Math.PI/180, grad: Math.PI/180, gon: Math.PI/200,
-    gc: GAMMA, angle: angle, t0: 0, t1: 2*Math.PI,
+    gc: GAMMA, gr: PHI, angle: angle, t0: 0, t1: 2*Math.PI,
     abs: Math.abs, sgn: Math.sign, sign: Math.sign,
     max: Math.max, min: Math.min, clamp: clamp,
     hypot: Math.hypot, floor: Math.floor, ceil: Math.ceil,
@@ -67,8 +72,8 @@ var ftab = {
     gamma: gamma2, fac: fac, rf: rfac, ff: ffac,
     Gamma: Gamma, erf: erf, erfc: erfc,
     En: En, Ei: Ei, li: li, Li: Li,
-    diff: diff, int: integral, D: diff_operator,
-    pow: pow, sum: sum, prod: prod, af: af,
+    diff: diff, int: integral, D: diff_operator, int16: int16,
+    iter: pow, sum: sum, prod: prod, af: af,
     rand: rand, rng: rand, tg: tg, sc: sc, res: res,
     range: range, inv: invab, agm: agm,
     E: eiE, K: eiK, F: eiF, Pi: eiPi,
@@ -76,7 +81,58 @@ var ftab = {
     P: set_position, scale: set_scale,
     zeroes: zeroes, roots: zeroes,
     map: map, filter: filter, freq: set_freq,
-    img: plot_img
+    img: plot_img, calc: calc_cmd, len: list_length, not: not,
+    _addtt_: add_tensor_tensor, _subtt_: sub_tensor_tensor,
+    _mulst_: mul_scalar_tensor, _mulmv_: mul_matrix_vector,
+    _mulmm_: mul_matrix_matrix, _mulvv_: scalar_product,
+    _vabs_: abs_vec
+};
+
+var keyword_table = {
+    "for": "for", "in": "in"
+};
+
+var lang_points = "points";
+
+var lang = {
+    a_function: "a function",
+    syntax_error: "Syntax error: ",
+    expected_right_paren: "expected ')'.",
+    expected_right_sq: "expected ']'.",
+    expected_operand: "expected an operand.",
+    expected_comman_or_bracket: function(i,bracket){
+        syntax_error(i,"expected ',' or '"+bracket+"'.");
+    },
+    unexpected_symbol: function(i,x){
+        syntax_error(i,"unexpected symbol: '"+x+"'.");
+    },
+    number_application_error: function(t){
+        return new Err([
+            "Error: tried to apply the number '",t,
+            "' as a function.<br><br>",
+            "Did you mean '",t,"*(...)' instead of '",t,
+            "(...)'?"
+        ].join(""));
+    },
+    fn_as_number_error: function(t,type){
+        return new Err(["Error: operator '",type,
+            "' takes numbers, but&nbsp;'",t,
+            "' is&nbsp;a function.<br><br>",
+            "Did you mean '",t,"(x)' instead of just '",t,"'?"
+        ].join(""));
+    },
+    undefined_variable: function(t){
+        return new Err("Error: undefined variable: '"+t+"'.");
+    },
+    initial_value_problem_msg: function(){
+        return new Err(
+            "Please append the initial values as follows:<br><br>"+
+            "p:=[x0,y(x0),y'(x0),y''(x0),...]<br><br>"+
+            "for example:<br><br>"+
+            "y''=-y; p:=[0,0,1]"
+        );
+    },
+    p_to_short: "Error: p is too short."
 };
 
 function load_async(URL,callback){
@@ -103,6 +159,9 @@ function load_ftab_extension(ftab,path){
     });
 }
 
+function list_length(a){return a.length;}
+function not(a){return 1-a;}
+
 function rand(a,b){
     if(a==undefined){
         return Math.random();
@@ -123,8 +182,12 @@ function range(a,b,step){
         return y;
     }else{
         var y = [];
-        for(var i=a; i<=b; i+=step){
-            y.push(i);
+        var i=0;
+        var x = a;
+        while(x<=b){
+            y.push(Math.round(1E12*x)/1E12);
+            i++;
+            x = a+i*step;
         }
         return y;
     }
@@ -209,95 +272,123 @@ function diffh_curry(h){
     };
 }
 
-var g64=[
-[0.0486909570091397, -0.0243502926634244],
-[0.0486909570091397, 0.0243502926634244],
-[0.0485754674415034, -0.0729931217877990],
-[0.0485754674415034, 0.0729931217877990],
-[0.0483447622348030, -0.1214628192961206],
-[0.0483447622348030, 0.1214628192961206],
-[0.0479993885964583, -0.1696444204239928],
-[0.0479993885964583, 0.1696444204239928],
-[0.0475401657148303, -0.2174236437400071],
-[0.0475401657148303, 0.2174236437400071],
-[0.0469681828162100, -0.2646871622087674],
-[0.0469681828162100, 0.2646871622087674],
-[0.0462847965813144, -0.3113228719902110],
-[0.0462847965813144, 0.3113228719902110],
-[0.0454916279274181, -0.3572201583376681],
-[0.0454916279274181, 0.3572201583376681],
-[0.0445905581637566, -0.4022701579639916],
-[0.0445905581637566, 0.4022701579639916],
-[0.0435837245293235, -0.4463660172534641],
-[0.0435837245293235, 0.4463660172534641],
-[0.0424735151236536, -0.4894031457070530],
-[0.0424735151236536, 0.4894031457070530],
-[0.0412625632426235, -0.5312794640198946],
-[0.0412625632426235, 0.5312794640198946],
-[0.0399537411327203, -0.5718956462026340],
-[0.0399537411327203, 0.5718956462026340],
-[0.0385501531786156, -0.6111553551723933],
-[0.0385501531786156, 0.6111553551723933],
-[0.0370551285402400, -0.6489654712546573],
-[0.0370551285402400, 0.6489654712546573],
-[0.0354722132568824, -0.6852363130542333],
-[0.0354722132568824, 0.6852363130542333],
-[0.0338051618371416, -0.7198818501716109],
-[0.0338051618371416, 0.7198818501716109],
-[0.0320579283548516, -0.7528199072605319],
-[0.0320579283548516, 0.7528199072605319],
-[0.0302346570724025, -0.7839723589433414],
-[0.0302346570724025, 0.7839723589433414],
-[0.0283396726142595, -0.8132653151227975],
-[0.0283396726142595, 0.8132653151227975],
-[0.0263774697150547, -0.8406292962525803],
-[0.0263774697150547, 0.8406292962525803],
-[0.0243527025687109, -0.8659993981540928],
-[0.0243527025687109, 0.8659993981540928],
-[0.0222701738083833, -0.8893154459951141],
-[0.0222701738083833, 0.8893154459951141],
-[0.0201348231535302, -0.9105221370785028],
-[0.0201348231535302, 0.9105221370785028],
-[0.0179517157756973, -0.9295691721319396],
-[0.0179517157756973, 0.9295691721319396],
-[0.0157260304760247, -0.9464113748584028],
-[0.0157260304760247, 0.9464113748584028],
-[0.0134630478967186, -0.9610087996520538],
-[0.0134630478967186, 0.9610087996520538],
-[0.0111681394601311, -0.9733268277899110],
-[0.0111681394601311, 0.9733268277899110],
-[0.0088467598263639, -0.9833362538846260],
-[0.0088467598263639, 0.9833362538846260],
-[0.0065044579689784, -0.9910133714767443],
-[0.0065044579689784, 0.9910133714767443],
-[0.0041470332605625, -0.9963401167719553],
-[0.0041470332605625, 0.9963401167719553],
-[0.0017832807216964, -0.9993050417357722],
-[0.0017832807216964, 0.9993050417357722]];
+var GL64 = [
+[-0.9993050417357721, 0.001783280721696567],
+[-0.9963401167719552, 0.004147033260562497],
+[-0.9910133714767444, 0.006504457968978312],
+[-0.9833362538846260, 0.00884675982636394],
+[-0.9733268277899110, 0.01116813946013113],
+[-0.9610087996520538, 0.01346304789671862],
+[-0.9464113748584029, 0.01572603047602469],
+[-0.9295691721319397, 0.01795171577569731],
+[-0.9105221370785028, 0.02013482315353021],
+[-0.8893154459951140, 0.02227017380838327],
+[-0.8659993981540928, 0.02435270256871088],
+[-0.8406292962525803, 0.02637746971505467],
+[-0.8132653151227975, 0.02833967261425949],
+[-0.7839723589433414, 0.03023465707240245],
+[-0.7528199072605319, 0.03205792835485153],
+[-0.7198818501716109, 0.03380516183714161],
+[-0.6852363130542332, 0.03547221325688238],
+[-0.6489654712546573, 0.03705512854024007],
+[-0.6111553551723932, 0.03855015317861561],
+[-0.5718956462026341, 0.03995374113272036],
+[-0.5312794640198946, 0.04126256324262352],
+[-0.4894031457070530, 0.04247351512365356],
+[-0.4463660172534641, 0.04358372452932344],
+[-0.4022701579639916, 0.04459055816375653],
+[-0.3572201583376681, 0.04549162792741817],
+[-0.3113228719902109, 0.04628479658131444],
+[-0.2646871622087674, 0.04696818281621003],
+[-0.2174236437400071, 0.04754016571483032],
+[-0.1696444204239928, 0.04799938859645833],
+[-0.1214628192961205, 0.04834476223480293],
+[-0.07299312178779904,0.04857546744150344],
+[-0.02435029266342443,0.04869095700913968],
+[ 0.02435029266342443,0.04869095700913968],
+[ 0.07299312178779904,0.04857546744150344],
+[ 0.1214628192961205, 0.04834476223480293],
+[ 0.1696444204239928, 0.04799938859645833],
+[ 0.2174236437400071, 0.04754016571483032],
+[ 0.2646871622087674, 0.04696818281621003],
+[ 0.3113228719902109, 0.04628479658131444],
+[ 0.3572201583376681, 0.04549162792741817],
+[ 0.4022701579639916, 0.04459055816375653],
+[ 0.4463660172534641, 0.04358372452932344],
+[ 0.4894031457070530, 0.04247351512365356],
+[ 0.5312794640198946, 0.04126256324262352],
+[ 0.5718956462026341, 0.03995374113272036],
+[ 0.6111553551723932, 0.03855015317861561],
+[ 0.6489654712546573, 0.03705512854024007],
+[ 0.6852363130542332, 0.03547221325688238],
+[ 0.7198818501716109, 0.03380516183714161],
+[ 0.7528199072605319, 0.03205792835485153],
+[ 0.7839723589433414, 0.03023465707240245],
+[ 0.8132653151227975, 0.02833967261425949],
+[ 0.8406292962525803, 0.02637746971505467],
+[ 0.8659993981540928, 0.02435270256871088],
+[ 0.8893154459951140, 0.02227017380838327],
+[ 0.9105221370785028, 0.02013482315353021],
+[ 0.9295691721319397, 0.01795171577569731],
+[ 0.9464113748584029, 0.01572603047602469],
+[ 0.9610087996520538, 0.01346304789671862],
+[ 0.9733268277899110, 0.01116813946013113],
+[ 0.9833362538846260, 0.00884675982636394],
+[ 0.9910133714767444, 0.006504457968978312],
+[ 0.9963401167719552, 0.004147033260562497],
+[ 0.9993050417357721, 0.001783280721696567]
+];
 
-function gauss(f,a,b,n){
-    var s,sj,h,i,j,aj,bj,p,q;
-    var g = g64;
-    var m = g64.length;
-    h = (b-a)/n;
-    s = 0;
-    for(j=0; j<n; j++){
-        aj = a+j*h;
-        bj = a+(j+1)*h;
-        p = 0.5*(bj-aj);
-        q = 0.5*(aj+bj);
-        sj = 0;
-        for(i=0; i<m; i++){
-            sj += g[i][0]*f(p*g[i][1]+q);
+var GL16 = [
+[-0.9894009349916499, 0.02715245941175403],
+[-0.9445750230732326, 0.06225352393864787],
+[-0.8656312023878316, 0.09515851168249286],
+[-0.7554044083550031, 0.1246289712555339],
+[-0.6178762444026438, 0.1495959888165767],
+[-0.4580167776572274, 0.1691565193950026],
+[-0.2816035507792589, 0.1826034150449236],
+[-0.09501250983763745,0.1894506104550685],
+[ 0.09501250983763745,0.1894506104550685],
+[ 0.2816035507792589, 0.1826034150449236],
+[ 0.4580167776572274, 0.1691565193950026],
+[ 0.6178762444026438, 0.1495959888165767],
+[ 0.7554044083550031, 0.1246289712555339],
+[ 0.8656312023878316, 0.09515851168249286],
+[ 0.9445750230732326, 0.06225352393864787],
+[ 0.9894009349916499, 0.02715245941175403]
+];
+
+function new_gauss(g){
+    return function gauss(f,a,b,n){
+        var m,s,sj,h,i,j,p,q,q0;
+        m = g.length;
+        h = (b-a)/n;
+        p = 0.5*h;
+        q0 = p+a;
+        s = 0;
+        for(j=0; j<n; j++){
+            q = q0+j*h;
+            sj = 0;
+            for(i=0; i<m; i++){
+                sj += g[i][1]*f(p*g[i][0]+q);
+            }
+            s += p*sj;
         }
-        s += p*sj;
-    }
-    return s;
+        return s;
+    };
 }
+
+var gauss = new_gauss(GL64);
+var gauss16 = new_gauss(GL16);
 
 function integral(a,b,f,n){
     if(n==undefined) n=1;
     return gauss(f,a,b,n);
+}
+
+function int16(a,b,f,n){
+    if(n==undefined) n=1;
+    return gauss16(f,a,b,n);
 }
 
 function pow(f,n,x){
@@ -693,8 +784,19 @@ function lambertwm1(x){
     return y;
 }
 
+function calc_cmd(cmd){
+    post_app_stack.push(function(){
+        var hud = document.getElementById("hud");
+        var input = document.getElementById("input-calc");
+        hud_display = true;
+        hud.style.display = "block";
+        input.value = cmd;
+        calc();
+    });
+}
+
 function isalpha(s){
-    return /^[a-z]+$/i.test(s);
+    return /^[a-zäöü]+$/i.test(s);
 }
 
 function isdigit(s){
@@ -705,16 +807,21 @@ function isspace(s){
     return s==' ' || s=='\t' || s=='\n';
 }
 
-function str(x){
+function str(x,ftos){
     if(Array.isArray(x)){
-        return "["+x.map(str).join(", ")+"]";
+        var f = function(t){return str(t);};
+        return "["+x.map(f).join(", ")+"]";
     }else if(x instanceof Function){
-        return "a function";
+        return lang.a_function;
     }else if(typeof x == "string"){
         return x;
     }else if(typeof x == "number"){
         if(Number.isFinite(x)){
-            return x.toString().toUpperCase();
+            if(ftos==undefined){
+                return x.toString().toUpperCase();
+            }else{
+                return ftos(x).toUpperCase();
+            }
         }else if(Number.isNaN(x)){
             return "nan";
         }else{
@@ -747,7 +854,7 @@ function syntax_error(i,text){
     var t = i.a[i.index];
     var s = ["&nbsp;&nbsp;",i.s,"<br>&nbsp;&nbsp;",
         repeat("&nbsp;",t[3])+"<b>^</b>", "<br>",
-        "Syntax error: ",text
+        lang.syntax_error, text
     ].join("");
     throw new Err(s);
 }
@@ -768,7 +875,8 @@ var superscript = {
 var Symbol = 0;
 var SymbolIdentifier = 1;
 var SymbolNumber = 2;
-var SymbolTerminator = 3;
+var SymbolString = 3;
+var SymbolTerminator = 4;
 
 function scan(s){
     var a = [];
@@ -784,13 +892,17 @@ function scan(s){
                 id += s[i];
                 i++; col++;
             }
-            if(a.length>0){
-                var last = a[a.length-1];
-                if(last[0]==SymbolNumber || (last[0]==Symbol && last[1]==')')){
-                    a.push([Symbol,"*",line,col0]);
+            if(keyword_table.hasOwnProperty(id)){
+                a.push([Symbol,keyword_table[id],line,col0]);
+            }else{
+                if(a.length>0){
+                    var last = a[a.length-1];
+                    if(last[0]==SymbolNumber || (last[0]==Symbol && last[1]==')')){
+                        a.push([Symbol,"*",line,col0]);
+                    }
                 }
+                a.push([SymbolIdentifier,id,line,col0]);
             }
-            a.push([SymbolIdentifier,id,line,col0]);
         }else if(isdigit(s[i])){
             var col0 = col;
             var j = i;
@@ -830,8 +942,15 @@ function scan(s){
             a.push([Symbol,"*",line,col]);
             a.push([SymbolIdentifier,"deg",line,col]);
             i++; col++;
+        }else if(s[i]=='"'){
+            i++; col++;
+            var col0 = col;
+            var j = i;
+            while(i<n && s[i]!='"'){i++; col++;}
+            a.push([SymbolString,s.slice(j,i),line,col0]);
+            i++; col++;
         }else{
-            if(s[i]=='(' && a.length>0){
+            if((s[i]=='(' || s[i]=='[') && a.length>0){
                 var last = a[a.length-1];
                 if(last[0]==SymbolNumber){
                     a.push([Symbol,"*",line,col]);
@@ -872,13 +991,13 @@ function atom(i){
         return t[1];
     }else if(t[0] == Symbol && t[1]=='('){
         i.index++;
-        var x = expression_list(i,"let");
+        var x = semicolon(i,"let");
         t = i.a[i.index];
         if(t[0] == Symbol && t[1]==')'){
             i.index++;
             return x;
         }else{
-            syntax_error(i,"expected ')'.");
+            syntax_error(i,lang.expected_right_paren);
         }
     }else if(t[0] == Symbol && t[1]=='['){
         i.index++;
@@ -886,8 +1005,11 @@ function atom(i){
         return application_list(i,a,']');
     }else if(t[0] == Symbol && t[1]=='|'){
         return lambda_expression(i);
+    }else if(t[0] == SymbolString){
+        i.index++;
+        return ["_string_",t[1]];
     }else{
-        syntax_error(i,"expected an operand.");
+        syntax_error(i,lang.expected_operand);
     }
 }
 
@@ -906,7 +1028,7 @@ function application_list(i,a,bracket){
         }else if(t[0]==Symbol && t[1]==','){
             i.index++;
         }else{
-            syntax_error(i,"expected ',' or '"+bracket+"'.");
+            lang.expected_comma_or_bracket(i,bracket);
         }
     }
 }
@@ -918,7 +1040,7 @@ function index_operation(i,x){
         i.index++;
         return ["index",x,y];
     }else{
-        syntax_error(i,"expected ']'.");
+        syntax_error(i,lang.expected_right_sq);
     }
 }
 
@@ -1057,7 +1179,8 @@ function comparison(i){
         var t = i.a[i.index];
         if(t[0]==Symbol && (
            t[1]=="<"  || t[1]==">" || t[1]=="<=" ||
-           t[1]==">=" || t[1]=="=" || t[1]=="!="
+           t[1]==">=" || t[1]=="=" || t[1]=="!=" ||
+           t[1]=="in"
         )){
             i.index++;
             var y = range_expression(i);
@@ -1097,8 +1220,20 @@ function disjunction(i){
     }
 }
 
+function for_expression(i){
+    var x = disjunction(i);
+    var t = i.a[i.index];
+    if(t[0]==Symbol && t[1]=="for"){
+        i.index++;
+        var y = disjunction(i);
+        return ["for",x,y];
+    }else{
+        return x;
+    }
+}
+
 function expression(i){
-    return disjunction(i);
+    return for_expression(i);
 }
 
 function assignment(i){
@@ -1131,12 +1266,36 @@ function expression_list(i,type){
     }
 }
 
+function semicolon(i,type){
+    var a = [";"];
+    while(1){
+        var t = i.a[i.index];
+        if(t[0]==Symbol && t[1]==";"){
+            a.push(null);
+            i.index++;
+            continue;
+        }
+        a.push(expression_list(i,type));
+        t = i.a[i.index];
+        if(t[0]==Symbol && t[1]==";"){
+            i.index++;
+        }else{
+            break;
+        }
+    }
+    if(a.length==2){
+        return a[1];
+    }else{
+        return a;
+    }
+}
+
 function parse(a,s){
     var i = {index: 0, a: a, s: s};
-    var x = expression_list(i,"block");
+    var x = semicolon(i,"block");
     var t = i.a[i.index];
     if(t[0] != SymbolTerminator){
-        syntax_error(i,"unexpected symbol: '"+t[1]+"'.");
+        lang.unexpected_symbol(i,t[1]);
     }
     return x;
 }
@@ -1144,6 +1303,171 @@ function parse(a,s){
 function ast(s){
     var a = scan(s);
     return parse(a,s);
+}
+
+function abs_vec(v){
+    var y = 0;
+    for(var i=0; i<v.length; i++){
+        y+=v[i]*v[i];
+    }
+    return Math.sqrt(y);
+}
+
+function scalar_product(v,w){
+    var y = 0;
+    for(var i=0; i<v.length; i++){
+        y+=v[i]*w[i];
+    }
+    return y;
+}
+
+function mul_scalar_tensor(r,a){
+    var b = [];
+    for(var i=0; i<a.length; i++){
+        if(Array.isArray(a[i])){
+            b.push(mul_scalar_tensor(r,a[i]));
+        }else{
+            b.push(r*a[i]);
+        }
+    }
+    return b;
+}
+
+function mul_matrix_vector(A,v){
+    var m = A.length;
+    var n = v.length;
+    var w = [];
+    for(var i=0; i<m; i++){
+        var y = 0;
+        for(var j=0; j<n; j++){y+=A[i][j]*v[j];}
+        w.push(y);
+    }
+    return w;
+}
+
+function mul_matrix_matrix(A,B){
+    var m = A.length;
+    var n = B[0].length;
+    var p = A[0].length;
+    var C = [];
+    for(var i=0; i<m; i++){
+        var v = [];
+        for(var j=0; j<n; j++){
+            var y = 0;
+            for(var k=0; k<p; k++){y+=A[i][k]*B[k][j];}
+            v.push(y);
+        }
+        C.push(v);
+    }
+    return C;
+}
+
+function add_tensor_tensor(a,b){
+    var c = [];
+    for(var i=0; i<a.length; i++){
+        if(Array.isArray(a[i])){
+            c.push(add_tensor_tensor(a[i],b[i]));
+        }else{
+            c.push(a[i]+b[i]);
+        }
+    }
+    return c;
+}
+
+function sub_tensor_tensor(a,b){
+    var c = [];
+    for(var i=0; i<a.length; i++){
+        if(Array.isArray(a[i])){
+            c.push(sub_tensor_tensor(a[i],b[i]));
+        }else{
+            c.push(a[i]-b[i]);
+        }
+    }
+    return c;
+}
+
+var TypeNumber = 0;
+var TypeVector = 1;
+var TypeMatrix = 2;
+var type_op_table = {
+    "[]":0, "+":0, "-":0, "*":0, "/":0, "^":0, "abs":0
+};
+var fn_type_table = {
+    "unit": TypeVector,
+    "nabla": TypeVector,
+    "rot": TypeMatrix,
+    "I": TypeMatrix,
+    "diag": TypeMatrix
+};
+var id_type_table = {};
+
+function infer_type(t){
+    if(Array.isArray(t)){
+        var T = t.map(infer_type);
+        if(type_op_table.hasOwnProperty(t[0])){
+            if(t[0]==="[]"){
+                if(T.length>1 && T[1]==TypeVector){
+                    return TypeMatrix;
+                }else{
+                    return TypeVector;
+                }
+            }else if(t[0]==="+"){
+                if(T[1]!=TypeNumber){
+                    t[0] = "_addtt_";
+                    return T[1];
+                }
+            }else if(t[0]==="-"){
+                if(T[1]!=TypeNumber){
+                    t[0] = "_subtt_";
+                    return T[1];
+                }
+            }else if(t[0]==="*"){
+                if(T[2]==TypeVector){
+                    if(T[1]==TypeMatrix){
+                        t[0] = "_mulmv_";
+                        return TypeVector;
+                    }else if(T[1]==TypeVector){
+                        t[0] = "_mulvv_";
+                    }else{
+                        t[0] = "_mulst_";
+                        return TypeVector;
+                    }
+                }else if(T[2]==TypeMatrix){
+                    if(T[1]==TypeMatrix){
+                        t[0] = "_mulmm_";
+                        return TypeMatrix;
+                    }else{
+                        t[0] = "_mulst_";
+                        return TypeMatrix;
+                    }
+                }
+            }else if(t[0]==="/"){
+                if(T[1]!=TypeNumber){
+                    t[0] = "_mulsv_";
+                    var v = t[1];
+                    t[1] = ["/",1,t[2]];
+                    t[2] = v;
+                    return T[1];
+                }
+            }else if(t[0]==="^"){
+                if(T[1]==TypeMatrix){
+                    t[0] = "_matrix_pow_";
+                    return TypeMatrix;
+                }
+            }else if(t[0]==="abs"){
+                if(T[1]==TypeVector){
+                    t[0] = "_vabs_";
+                }
+            }
+        }else if(fn_type_table.hasOwnProperty(t[0])){
+            return fn_type_table[t[0]];
+        }
+    }else if(typeof t=="string"){
+        if(id_type_table.hasOwnProperty(t)){
+            return id_type_table[t];
+        }
+    }
+    return TypeNumber;
 }
 
 function compile_application(a,id,t,context){
@@ -1209,28 +1533,15 @@ var number_op_table = {
     "<":0, ">":0, "<=":0, ">=":0
 }
 
-function number_application_error(t){
-    return new Err([
-        "Error: tried to apply number '",t,
-        "' as a function.<br><br>",
-        "Did you mean '",t,"*(...)' instead of '",t,
-        "(...)'?"
-    ].join(""));
-}
-
 function type_test(t,type){
     if(type!=undefined){
         if(type=="app"){
             if(typeof ftab[t]=="number"){
-                throw number_application_error(t);
+                throw lang.number_application_error(t);
             }
         }else if(number_op_table.hasOwnProperty(type)){
             if(typeof ftab[t]=="function"){
-                throw new Err(["Error: operator '",type,
-                    "' takes numbers, but&nbsp;'",t,
-                    "' is&nbsp;a function.<br><br>",
-                    "Did you mean '",t,"(x)' instead of just '",t,"'?"
-                ].join(""));
+                throw lang.fn_as_number_error(t,type);
             }
         }
     }
@@ -1238,11 +1549,11 @@ function type_test(t,type){
 
 function compile_expression(a,t,context,type){
     if(typeof t == "number"){
-        a.push(t);
+        a.push(t<0?("("+t+")"):t);
     }else if(typeof t == "string"){
         if(t in context.local){
             if(type=="app" && context.local[t]=="number"){
-                throw number_application_error(t);
+                throw lang.number_application_error(t);
             }else{
                 a.push(t);
             }
@@ -1256,7 +1567,7 @@ function compile_expression(a,t,context,type){
             load_ftab_extension(ftab,"js/ftab-extension.js");
             throw new Repeat();
         }else{
-            throw new Err("Error: undefined variable: '"+t+"'.");
+            throw lang.undefined_variable(t);
         }
     }else if(Array.isArray(t)){
         var op = t[0];
@@ -1304,6 +1615,8 @@ function compile_expression(a,t,context,type){
                 compile_expression(a,t[3],context);
             }
             a.push(")");
+        }else if(op=="_string_"){
+            a.push('"'+t[1]+'"');
         }else{
             compile_expression(a,op,context,"app");
             compile_application(a,"",t,context);
@@ -1313,20 +1626,17 @@ function compile_expression(a,t,context,type){
     }
 }
 
-function compile(t,argv,type){
-    if(type==undefined) type="number";
-    var a = [];
-    var local = Object.create(null);
-    for(var i=0; i<argv.length; i++){
-        local[argv[i]] = type;
-    }
-    var context = {
-        pre: ["var power=Math.pow;"],
-        local: local,
-        statements: []
+function fix(m,F){
+    return function f(n){
+        if(!m.hasOwnProperty(n)){m[n] = F(f,n);}
+        return m[n];
     };
+}
+
+function compile_fn_body(a,t,context,sig){
     a.push("(function(){");
-    a.push("return function("+argv.join(",")+"){");
+    a.push("return function"+sig);
+    a.push("){");
     var statements_index = a.length;
     a.push("");
     a.push("return ");
@@ -1337,8 +1647,35 @@ function compile(t,argv,type){
     if(context.statements.length>0){
         a[statements_index] = context.statements.join("");
     }
-    // alert(a.join(""));
-    return window.eval(a.join(""));
+}
+
+function compile(t,argv,type,name){
+    if(type==undefined) type="number";
+    var a = [];
+    var local = Object.create(null);
+    for(var i=0; i<argv.length; i++){
+        local[argv[i]] = type;
+    }
+    if(name!=undefined){
+        local[name] = "";
+    }
+    var context = {
+        pre: ["var power=Math.pow;"],
+        local: local,
+        statements: []
+    };
+    if(name!=undefined && recursion_table.hasOwnProperty(name)){
+        compile_fn_body(a,t,context,"("+name+","+argv.join(","));
+        var m = recursion_table[name];
+        delete recursion_table[name];
+        // console.log(a.join(""));
+        return fix(m,window.eval(a.join("")));
+    }else{
+        name = name==undefined?"":" "+name;
+        compile_fn_body(a,t,context,name+"("+argv.join(","));
+        // console.log(a.join(""));
+        return window.eval(a.join(""));
+    }
 }
 
 function compile_string(s,argv){
@@ -1398,28 +1735,35 @@ function new_point(gx){
         pseta_median(color,x,y+1,a);
         pseta_median(color,x+1,y+1,a);
     }
+    // var fade = function(x){
+    //     return Math.exp(-0.4*x*x*x);
+    // };
+    // Approximation:
     var fade = function(x){
-        return Math.exp(-0.4*x*x*x);
+        var t = x+0.128*x*x;
+        var y = 13.8/(t*t*t+13.8);
+        var y2 = y*y;
+        return y2*y2;
     };
-    var psetdiff = function(color,rx,ry,px,py){
+    var psetdiff = function(a,color,rx,ry,px,py){
         var dx = Math.abs(px-rx);
         var dy = Math.abs(py-ry);
         var d = Math.sqrt(dx*dx+dy*dy);
-        pseta(color,px,py,255*fade(d));
+        pseta(color,px,py,a*fade(d));
     };
-    var fpsets = function(color,rx,ry){
+    var fpsets = function(a,color,rx,ry){
         var px = Math.floor(rx);
         var py = Math.floor(ry);
         for(var i=-2; i<=2; i++){
             for(var j=-2; j<=2; j++){
-                psetdiff(color,rx,ry,px+i,py+j);
+                psetdiff(a,color,rx,ry,px+i,py+j);
             }
         }
     };
     var spoint = function(color,x,y){
         var rx = gx.px0+mx*x;
         var ry = gx.py0-my*y;
-        fpsets(color,rx,ry);
+        fpsets(255,color,rx,ry);
     };
     var point = function(color,x,y){
         var px = floor(gx.w2+mx*x);
@@ -1468,16 +1812,38 @@ function new_point(gx){
             pset4a(color,px,py,a);
         }
     };
+    var circle = function(color,x,y,r,fill){
+        var rx = gx.px0+ax*mx*x;
+        var ry = gx.py0-ay*my*y;
+        if(fill){
+            var px = Math.round(rx);
+            var py = Math.round(ry);
+            var n = Math.round(r);
+            var r2 = r*r;
+            for(var i=-n; i<=n; i++){
+                for(var j=-n; j<=n; j++){
+                    if(i*i+j*j<r2){pset(color,px+i,py+j);}
+                }
+            }
+        }
+        var t1 = 2*Math.PI;
+        var d = 1/r;
+        for(var t=0; t<t1; t+=d){
+            fpsets(255,color,rx+r*Math.cos(t),ry+r*Math.sin(t));
+        }
+    };
 
     gx.pset = pset;
     gx.pset4 = pset4;
     gx.point = point;
     gx.spoint = spoint;
+    gx.fpsets = fpsets;
     gx.hline = hline;
     gx.vline = vline;
     gx.hspine = hspine;
     gx.vspine = vspine;
     gx.pseta_median = pseta_median;
+    gx.circle = circle;
 }
 
 function init(canvas,w,h){
@@ -1492,18 +1858,19 @@ function init(canvas,w,h){
     gx.px0 = Math.floor(0.5*gx.w);
     gx.py0 = Math.floor(0.5*gx.h);
     gx.pos = [0,0];
+    gx.animation = false;
 
     if(dark){
         gx.color_bg = color_dark_bg;
         gx.color_axes = color_dark_axes;
         gx.color_grid = color_dark_grid;
         color_table = color_table_dark;
-        gx.context.fillStyle = "#5a5a5a";
+        gx.font_color = "#5a5a5a";
     }else{
         gx.color_bg = color_bg;
         gx.color_axes = color_axes;
         gx.color_grid = color_grid;
-        gx.context.fillStyle = "#404040";
+        gx.font_color = "#404040";
     }
 
     gx.color = [0,0,0,255];
@@ -1616,7 +1983,10 @@ function labels(gx){
     var xshift = Math.round((0.5*gx.w-px0)/gx.mx);
     var yshift = Math.round((0.5*gx.h-py0)/gx.mx);
     var px,py,s,px_adjust,py_adjust;
+    context.fillStyle = gx.font_color;
     context.textAlign = "center";
+
+
     var bulky_pred = false;
     var char_max = gx.char_max;
     var bulky2 = false;
@@ -1780,25 +2150,41 @@ function bisection_fast(N,state,f,a,b){
     return m;
 }
 
-async function plot_zero_set(gx,f,n,cond,color){
+async function plot_zero_set(gx,f,n,N,cond,color){
     var pid = {};
     var index = pid_stack.length;
     pid_stack.push(pid);
     busy = true;
-    var wx = 0.5*gx.w/gx.mx/ax;
-    var wy = 0.5*gx.h/gx.mx/ay;
-    var x0 = (0.5*gx.w-gx.px0)/gx.mx/ax;
-    var y0 = -(0.5*gx.h-gx.py0)/gx.mx/ay;
-    var xa = x0-wx;
-    var xb = x0+wx;
-    var ya = y0-wy;
-    var yb = y0+wy;
-    var d = 0.01/ax;
+
+    var W = gx.w;
+    var H = gx.h;
+    var px,py,x,y,z;
+    var px0 = gx.px0;
+    var py0 = gx.py0;
+    var Ax = 1/(gx.mx*ax);
+    var Ay = -1/(gx.mx*ay);
+
+    var state;
+    var dx = n/(gx.mx*ax);
+    var dy = n/(gx.mx*ay);
     var k=0;
-    for(var x=xa; x<xb; x+=d){
-        var a = zeroes_bisection(function(y){return f(x,y);},ya,yb,n);
-        for(var i=0; i<a.length; i++){
-            gx.spoint(color,ax*x,ay*a[i]);
+
+    for(py=0; py<H; py+=1){
+        state = undefined;
+        for(px=0; px<W; px+=n){
+            x = Ax*(px-px0);
+            y = Ay*(py-py0);
+            z = f(x,y)<0;
+            if(z!=state){
+                if(state!=undefined){
+                    var g = function(x){return f(x,y);};
+                    var x0 = bisection_fast(N,state,g,x-dx,x+dx);
+                    if(Math.abs(f(x0,y))<0.1){
+                        gx.spoint(color,ax*x0,ay*y);
+                    }
+                }
+                state = z;
+            }
         }
         if(cond && k%100==0){
             await sleep(20);
@@ -1806,10 +2192,22 @@ async function plot_zero_set(gx,f,n,cond,color){
         if(cancel(pid,index,pid_stack)) return;
         k++;
     }
-    for(var y=ya; y<yb; y+=d){
-        var a = zeroes_bisection(function(x){return f(x,y);},xa,xb,n);
-        for(var i=0; i<a.length; i++){
-            gx.spoint(color,ax*a[i],ay*y);
+    for(px=0; px<W; px+=1){
+        state = undefined;
+        for(py=0; py<H; py+=n){
+            x = Ax*(px-px0);
+            y = Ay*(py-py0);
+            z = f(x,y)<0;
+            if(z!=state){
+                if(state!=undefined){
+                    var g = function(y){return f(x,y);};
+                    var y0 = bisection_fast(N,!state,g,y-dy,y+dy);
+                    if(Math.abs(f(x,y0))<0.1){
+                        gx.spoint(color,ax*x,ay*y0);
+                    }
+                }
+                state = z;
+            }
         }
         if(cond && k%100==0){
             await sleep(20);
@@ -1852,6 +2250,7 @@ async function plot_async(gx,f,color){
         fplot(gx,f,0.0002,false,color);
     }else{
         fplot(gx,f,0.01,false,color);
+        if(gx.animation==true) return;
         while(busy){await sleep(40);}
         await sleep(40);
         fplot(gx,f,0.001,true,color);
@@ -1861,12 +2260,16 @@ async function plot_async(gx,f,color){
 
 async function plot_zero_set_async(gx,f,color){
     if(gx.sync_mode==true){
-        plot_zero_set(gx,f,400,false,color);
+        plot_zero_set(gx,f,1,14,false,color);
     }else{
-        plot_zero_set(gx,f,10,false,color);
+        if(gx.animation==true){
+            plot_zero_set(gx,f,40,10,false,color);
+            return;
+        }
+        plot_zero_set(gx,f,4,10,false,color);
         while(busy){await sleep(40);}
         await sleep(40);
-        plot_zero_set(gx,f,400,true,color);
+        plot_zero_set(gx,f,1,14,true,color);
     }
 }
 
@@ -1875,6 +2278,7 @@ async function vplot_async(gx,f,color){
         vplot(gx,f,0.001,false,color);
     }else{
         vplot(gx,f,0.01,false,color);
+        if(gx.animation==true) return;
         while(busy){await sleep(40);}
         await sleep(40);
         vplot(gx,f,0.001,true,color);
@@ -2114,14 +2518,10 @@ function from_ode(gx,t){
     var f = ode_as_fn(t,v,order);
     var p = ftab["p"];
     if(!ftab.hasOwnProperty("p") || !Array.isArray(p)){
-        throw new Err(
-            "Please append initial values as follows:<br><br>"+
-            "p:=[x0,y(x0),y'(x0),y''(x0),...]<br><br>"+
-            "for example:<br><br>"+
-            "y''=-y; p:=[0,0,1]")
+        throw lang.initial_value_problem_msg();
     }
     if(p.length<order+1){
-        throw new Err("Error: p is too short.");
+        throw new Err(lang.p_to_short);
     }else{
         p = p.slice(0,order+1);
     }
@@ -2130,6 +2530,32 @@ function from_ode(gx,t){
     var fv = runge_kutta(f,0.001,wm,wp,p[0],p.slice(1));
     if(v!=="y") ftab[v]=fv;
     return fv;
+}
+
+function points(gx,color,f,a){
+    var r = 4;
+    if(a.length>1){
+        r = r*clamp(4*ax*Math.abs(a[1]-a[0]),0.25,1);
+    }
+    for(var i=0; i<a.length; i++){
+        var y = f(a[i]);
+        if(Array.isArray(y)){
+            gx.circle(color,y[0],y[1],4,true);
+        }else{
+            gx.circle(color,a[i],y,r,true);
+        }
+    }
+    flush(gx);
+    labels(gx);
+}
+
+function points_list(gx,color,a){
+    for(var i=0; i<a.length; i++){
+        var t = a[i];
+        gx.circle(color,t[0],t[1],4,true);
+    }
+    flush(gx);
+    labels(gx);
 }
 
 function contains_variable(t,v){
@@ -2143,81 +2569,139 @@ function contains_variable(t,v){
     }
 }
 
+function substitute(t,v,value){
+    if(Array.isArray(t)){
+        var a = [];
+        for(var i=0; i<t.length; i++){
+            a.push(substitute(t[i],v,value));
+        }
+        return a;
+    }else if(t===v){
+        return value;
+    }else{
+        return t;
+    }
+}
+
+function node_loop(callback,gx,t,color){
+    var v = t[2][1];
+    var a = compile(t[2][2],[])();
+    var node = t[1];
+    for(var i=0; i<a.length; i++){
+        t = substitute(node,v,a[i]);
+        if(Array.isArray(t) && t[0]===";"){
+            for(var j=2; j<t.length; j++){
+                eval_statements(t[j]);
+            }
+            t = t[1];
+            if(t===null) continue;
+        }
+        callback(gx,t,color);
+    }
+}
+
 var bool_result_ops = {
-    "<":0, ">":0, "<=":0, ">=":0, "&":0, "|":0
+    "<":0, ">":0, "<=":0, ">=":0, "&":0, "|":0, "not":0
 };
 
-function plot_node(gx,t,color){
+function plot_node_basic(gx,t,color){
     var f;
-    if(Array.isArray(t) && t[0]==="="){
+    if(Array.isArray(t) && t[0]==="for"){
+        node_loop(plot_node,gx,t,color);
+    }else if(Array.isArray(t) && t[0]===lang_points){
+        if(t.length==2){
+            var a = compile(t[1],[])();
+            points_list(gx,color,a);
+        }else{
+            var a = compile(t[2],[])();
+            f = compile(t[1],[])();
+            points(gx,color,f,a);
+        }
+    }else if(Array.isArray(t) && t[0]==="="){
         if(Array.isArray(t[1]) && t[1][0]==="D"){
             f = from_ode(gx,t);
             plot_async(gx,f,color);
         }else if(t[1]==="y" && !contains_variable(t[2],"y")){
+            infer_type(t);
             f = compile(t[2],["x"]);
             plot_async(gx,f,color);
         }else{
             t = ["-",t[1],t[2]];
+            infer_type(t);
             f = compile(t,["x","y"]);
             plot_zero_set_async(gx,f,color);
         }
-    }else if(Array.isArray(t) && t[0]==="[]"){
-        f = compile(t,["t"]);
-        vplot_async(gx,f,color);
     }else if(Array.isArray(t) && bool_result_ops.hasOwnProperty(t[0])){
+        infer_type(t);
         f = compile(t,["x","y"]);
         plot_bool(gx,f,color,1);
     }else if(contains_variable(t,"y")){
+        infer_type(t);
         f = compile(t,["x","y"]);
         plot_level_async(gx,f,color);
     }else{
-        f = compile(t,["x"]);
-        plot_async(gx,f,color);
+        var T = infer_type(t);
+        if(T==TypeVector){
+            f = compile(t,["t"]);
+            vplot_async(gx,f,color);
+        }else{
+            f = compile(t,["x"]);
+            plot_async(gx,f,color);
+        }
     }
+}
+
+function plot_node(gx,t,color){
+    plot_node_basic(gx,t,color);
 }
 
 function global_definition(t){
     if(Array.isArray(t[1])){
         var app = t[1];
-        var value = compile(t[2],app.slice(1),"");
-        ftab[app[0]] = value;
+        var name = app[0];
+        var T = infer_type(t[2]);
+        if(app.length==2 && typeof app[1]!="string"){
+            if(!recursion_table.hasOwnProperty(name)){
+                recursion_table[name] = {};
+            }
+            recursion_table[name][app[1]] = compile(t[2],[])();
+        }else{
+            if(T!=TypeNumber) fn_type_table[name] = T;
+            var value = compile(t[2],app.slice(1),"",name);
+            ftab[name] = value;
+        }
     }else{
+        var T = infer_type(t[2]);
+        if(T!=TypeNumber) id_type_table[t[1]] = T;
         var value = compile(t[2],[]);
         ftab[t[1]] = value();
     }
 }
 
-function eval_statements(s){
-    var t = ast(s);
-    var value;
-    if(Array.isArray(t) && t[0]==="block"){
+function eval_statements(t){
+    if(Array.isArray(t) && (t[0]==="block" || t[0]===";")){
         for(var i=1; i<t.length; i++){
-            if(Array.isArray(t[i]) && t[i][0]===":="){
-                global_definition(t[i]);
-            }else{
-                value = compile(t[i],[]);
-                value();
-            }
+            eval_statements(t[i]);
         }
     }else{
         if(Array.isArray(t) && t[0]===":="){
             global_definition(t);
         }else{
-            value = compile(t,[]);
-            var y = value();
+            var value = compile(t,[]);
+            value();
         }
     }
 }
 
 function process_statements(a){
     if(a.length>1){
-        if(a.length>2){
-            var inputf = document.getElementById("inputf");
-            inputf.value = a[0];
-            if(a[1].length>0) inputf.value += ";"+a[1];
-        }
-        for(var i=1; i<a.length; i++){
-            if(a[i].length>0) eval_statements(a[i]);
+        var inputf = document.getElementById("inputf");
+        inputf.value = a[0];
+    }
+    for(var i=1; i<a.length; i++){
+        if(a[i].length>0){
+            var t = ast(a[i]);
+            eval_statements(t);
         }
     }
 }
@@ -2225,7 +2709,7 @@ function process_statements(a){
 function plot(gx){
     var color_index = 0;
     var input = get_value("inputf").trim();
-    var a = input.split(";");
+    var a = input.split(";;");
     process_statements(a);
     pid_stack = [];
 
@@ -2233,8 +2717,15 @@ function plot(gx){
     flush(gx);
     labels(gx);
 
-    if(input.length>0){
+    if(a[0].length>0){
         var t = ast(a[0]);
+        if(Array.isArray(t) && t[0]===";"){
+            for(var i=2; i<t.length; i++){
+                eval_statements(t[i]);
+            }
+            t = t[1];
+            if(t===null) return;
+        }
         if(Array.isArray(t) && t[0]==="block"){
             for(var i=1; i<t.length; i++){
                 if(Array.isArray(t[i]) && t[i][0]===":="){
@@ -2254,6 +2745,29 @@ function plot(gx){
     }
 }
 
+function calculate_eval(t){
+    if(Array.isArray(t) && t[0]===";"){
+        var a = [];
+        for(var i=2; i<t.length; i++){
+            var y = calculate_eval(t[i]);
+            if(y!=undefined) a.push(y);
+        }
+        return calculate_eval(t[1]);
+    }else if(Array.isArray(t) && t[0]==="block"){
+        var a = [];
+        for(var i=1; i<t.length; i++){
+            var y = calculate_eval(t[i]);
+            if(y!=undefined) a.push(y);
+        }
+        if(a.length>0) return a;
+    }else if(Array.isArray(t) && t[0]===":="){
+        global_definition(t);
+    }else{
+        infer_type(t);
+        return compile(t,[])();
+    }
+}
+
 function calculate(compile){
     var input = get_value("input-calc");
     var out = document.getElementById("calc-out");
@@ -2263,10 +2777,14 @@ function calculate(compile){
     }
     try{
         var t = ast(input);
-        var value = compile(t,[]);
+        var value = calculate_eval(t);
         // out.innerHTML = "<p><code>"+str(t)+"</code>";
         // var t0 = performance.now();
-        out.innerHTML = "<p><code>= "+str(value())+"</code>";
+        if(value==undefined){
+            out.innerHTML = "";
+        }else{
+            out.innerHTML = "<p><code>= "+str(value)+"</code>";
+        }
         // var t1 = performance.now();
         // out.innerHTML += "<p><code>time: "+(t1-t0)+"ms</code>";
     }catch(e){
@@ -2304,80 +2822,66 @@ function set_position(x,y){
     return [x,y];
 }
 
-function set_scale(dx,dy){
+function set_scale(dx,dy,dz){
     if(dy==undefined) dy=dx;
-    var t = graphics.pos;
+    if(dz==undefined) dz=dx;
     ax = 1/dx;
     ay = 1/dy;
-    set_pos(graphics,t);
+    az = 1/dz;
+    set_pos(graphics,graphics.pos);
     xscale.index = index0+Math.round(3*lg(ax));
     yscale.index = index0+Math.round(3*lg(ay));
+    zscale.index = index0+Math.round(3*lg(az));
     return [dx,dy];
 }
 
-function scale_inc(scale){
-    var m;
-    if(scale.index%3==2){
-        m = 5/2;
-    }else{
-        m = 2;
-    }
+function scale_inc(scale,a){
+    var m = scale.index%3==2?5/2:2;
     scale.index++;
-    var t = graphics.pos;
-    if(scale===xscale){
-        ax = Math.round(1E10*ax*m)/1E10;
-    }else{
-        ay = Math.round(1E10*ay*m)/1E10;
-    }
-    set_pos(graphics,t);
+    return Math.round(1E10*a*m)/1E10;
 }
 
-function scale_dec(scale){
-    var m;
-    if(scale.index%3==0){
-        m = 5/2;
-    }else{
-        m = 2;
-    }
+function scale_dec(scale,a){
+    var m = scale.index%3==0?5/2:2;
     scale.index--;
-    var t = graphics.pos;
-    if(scale===xscale){
-        ax = Math.round(1E10*ax/m)/1E10;
-    }else{
-        ay = Math.round(1E10*ay/m)/1E10;
-    }
-    set_pos(graphics,t);
+    return Math.round(1E10*a/m)/1E10;
 }
 
 function xyscale_inc(){
-    scale_inc(xscale);
-    scale_inc(yscale);
+    ax = scale_inc(xscale,ax);
+    ay = scale_inc(yscale,ay);
+    set_pos(graphics,graphics.pos);
     update(graphics);
 }
 
 function xyscale_dec(){
-    scale_dec(xscale);
-    scale_dec(yscale);
+    ax = scale_dec(xscale,ax);
+    ay = scale_dec(yscale,ay);
+    set_pos(graphics,graphics.pos);
     update(graphics);
 }
 
 function xscale_inc(){
-    scale_inc(xscale);
+    ax = scale_inc(xscale,ax);
+    set_pos(graphics,graphics.pos);
     update(graphics);
 }
 
 function yscale_inc(){
-    scale_inc(yscale);
+    ay = scale_inc(yscale,ay);
+    set_pos(graphics,graphics.pos);
     update(graphics);
 }
 
 function xscale_dec(){
-    scale_dec(xscale);
+    ax = scale_dec(xscale,ax);
+    set_pos(graphics,graphics.pos);
     update(graphics);
 }
 
 function yscale_dec(){
-    scale_dec(yscale);
+    ay = scale_dec(yscale,ay);
+    set_pos(graphics,graphics.pos);
     update(graphics);
 }
 
@@ -2406,6 +2910,7 @@ function update(gx){
             throw e;
         }
     }
+    process_post_applications();
 }
 
 function main(){
@@ -2422,27 +2927,11 @@ function keys_calc(event){
     if(event.keyCode==13) calc();
 }
 
-function decode_percent(s){
-    var a = [];
-    var n = s.length;
-    var i = 0;
-    while(i<n){
-        if(i+2<n && s[i]=='%'){
-            a.push(decodeURIComponent(s.slice(i,i+3)));
-            i+=3;
-        }else{
-            a.push(s[i]);
-            i++;
-        }
-    }
-    return a.join("");
-}
-
 function query(href){
     var a = href.split("?");
     if(a.length>1){
         var input = document.getElementById("inputf");
-        input.value = decode_percent(a[1]);
+        input.value = decodeURIComponent(a[1]);
     }
 }
 
@@ -2454,7 +2943,9 @@ var encode_tab = {
 function encode_query(s){
     var a = [];
     for(var i=0; i<s.length; i++){
-        if(encode_tab.hasOwnProperty(s[i])){
+        if(s.charCodeAt(i)>127){
+            a.push(encodeURIComponent(s[i]));
+        }else if(encode_tab.hasOwnProperty(s[i])){
             a.push("%"+encode_tab[s[i]]);
         }else{
             a.push(s[i]);
@@ -2467,21 +2958,30 @@ function upper_str(x){
     return x.toString().toUpperCase();
 }
 
-function link(position){
+function link(position,regard_zscale){
+    if(regard_zscale==undefined) regard_zscale = false;
     var s = document.getElementById("inputf").value;
     var out = document.getElementById("calc-out");
     var url = window.location.href.split("?")[0];
-    var scale = (xscale.index==yscale.index?
-        (xscale.index==index0?"":";;scale("+upper_str(1/ax)+")"):
-        ";;scale("+upper_str(1/ax)+","+upper_str(1/ay)+")"
-    );
+    var scale;
+    if(regard_zscale){
+        scale = (xscale.index==yscale.index && xscale.index==zscale.index?
+            (xscale.index==index0?"":";;scale("+upper_str(1/ax)+")"):
+            ";;scale("+upper_str(1/ax)+","+upper_str(1/ay)+","+upper_str(1/az)+")"            
+        );
+    }else{
+        scale = (xscale.index==yscale.index?
+            (xscale.index==index0?"":";;scale("+upper_str(1/ax)+")"):
+            ";;scale("+upper_str(1/ax)+","+upper_str(1/ay)+")"
+        );
+    }
     var pos = "";
     var t = graphics.pos;
     if(position && (t[0]!=0 || t[1]!=0)){
         var n = Math.max(0,1+Math.round(Math.log(ax)));
-        t[0] = t[0].toFixed(n);
-        t[1] = t[1].toFixed(n);
-        pos = (scale==""?";;":",")+"P("+t[0]+","+t[1]+")";
+        var t0 = t[0].toFixed(n);
+        var t1 = t[1].toFixed(n);
+        pos = (scale==""?";;":",")+"P("+t0+","+t1+")";
     }
     out.innerHTML = "<p style='font-size: 80%'>"+url+"?"+encode_query(s+scale+pos);
 }
@@ -2521,6 +3021,14 @@ function calc_img(){
     var input = document.getElementById("input-calc");
     input.value = "img(540,360)";
     calc();
+}
+
+function process_post_applications(){
+    for(var i=0; i<post_app_stack.length; i++){
+        var f = post_app_stack[i];
+        f();
+    }
+    post_app_stack = [];
 }
 
 window.onload = function(){

@@ -23,7 +23,51 @@ function zeroes_bisection_fast(f,a,b,n){
     return zeroes;
 }
 
-function plot_implicit_sf(gx,f,d,xstep,ystep){
+function buffer_zip(a00,a01,a11,a10,epsilon){
+    var len = a00.length;
+    var a = [];
+    var t0,t1,t2,t3;
+    var j,j0,j1,jmin,d,dmin;
+    var n = 2;
+    for(var i=0; i<len; i++){
+        t0 = a00[i];
+        j0 = Math.max(0,i-n);
+
+        j1 = Math.min(i+n,a01.length-1);
+        jmin = j0;
+        dmin = Math.abs(t0-a01[jmin]);
+        for(j=j0+1; j<=j1; j++){
+            d = Math.abs(t0-a01[j]);
+            if(d<dmin){jmin = j; dmin = d;}
+        }
+        if(!(dmin<epsilon)) continue;
+        t1 = a01[jmin];
+
+        j1 = Math.min(i+n,a11.length-1);
+        jmin = j0;
+        dmin = Math.abs(t0-a11[jmin]);
+        for(j=j0+1; j<=j1; j++){
+            d = Math.abs(t0-a11[j]);
+            if(d<dmin){jmin = j; dmin = d;}
+        }
+        if(!(dmin<epsilon)) continue;
+        t2 = a11[jmin];
+
+        j1 = Math.min(i+n,a10.length-1);
+        jmin = j0;
+        dmin = Math.abs(t1-a10[jmin]);
+        for(j=j0+1; j<=j1; j++){
+            d = Math.abs(t1-a10[j]);
+            if(d<dmin){jmin = j; dmin = d;}
+        }
+        if(!(dmin<epsilon)) continue;
+        t3 = a10[jmin];
+        a.push([t0,t1,t2,t3]);
+    }
+    return a;
+}
+
+function plot_implicit_sf(gx,f,d,xstep,ystep,epsilon){
     var x,y,z,w00,v;
     var kx,ky,kz;
     var context = gx.context;
@@ -31,46 +75,48 @@ function plot_implicit_sf(gx,f,d,xstep,ystep){
     var s = Math.sin(gx.phi);
 
     var dx = d/ax;
-    var dy = d/ax;
-    var dz = d/ax;
-    var x0 = grx[0]/ax;
-    var x1 = grx[1]/ax;
-    var y0 = gry[0]/ax;
-    var y1 = gry[1]/ax;
-    var z0 = x0;
-    var z1 = x1;
+    var dy = d/ay;
+    var dz = d/az;
+    var mz = az/ax;
+    var px = position[0];
+    var py = position[1];
+    var pz = position[2];
+    
+    var x0 = px+grx[0]/ax;
+    var x1 = px+grx[1]/ax;
+    var y0 = py+gry[0]/ay;
+    var y1 = py+gry[1]/ay;
+    var z0 = pz+grx[0]/az;
+    var z1 = pz+grx[1]/az;
     var n = 20;
-    var epsilon = 2*d/ax;
 
     var zip_buffer = [];
-    var shift,shift1,shift2,shift3;
+    var g00,g01,g11,g10,a00,a01,a11,a10;
+    var a,t;
 
     kx = 0;
     for(x = x0; x<x1; x+=dx){
         ky = 1;
+        g00 = function(z){return f(x,y0,z);};
+        g10 = function(z){return f(x+dx,y0,z);};
+        a00 = zeroes_bisection_fast(g00,z0,z1,n);
+        a10 = zeroes_bisection_fast(g10,z0,z1,n);
         for(y = y0; y<y1; y+=dy){
-            var g00 = function(z){return f(x,y,z);};
-            var g01 = function(z){return f(x,y+dy,z);};
-            var g11 = function(z){return f(x+dx,y+dy,z);};
-            var g10 = function(z){return f(x+dx,y,z);};
-            var a00 = zeroes_bisection_fast(g00,z0,z1,n);
-            var a01 = zeroes_bisection_fast(g01,z0,z1,n);
-            var a11 = zeroes_bisection_fast(g11,z0,z1,n);
-            var a10 = zeroes_bisection_fast(g10,z0,z1,n);
-            var len = Math.min(a00.length,a01.length,a11.length,a10.length);
-            shift1=0; shift2=0; shift3=0;
-            for(var k=0; k<len; k++){
-                w00 = a00[k];
-                shift=false;
-                if(Math.abs(w00-a01[k-shift1])>epsilon){shift1++; shift=true;}
-                if(Math.abs(w00-a11[k-shift2])>epsilon){shift2++; shift=true;}
-                if(Math.abs(w00-a10[k-shift3])>epsilon){shift3++; shift=true;}
-                if(shift){continue;}
+            g01 = function(z){return f(x,y+dy,z);};
+            g11 = function(z){return f(x+dx,y+dy,z);};
+            a01 = zeroes_bisection_fast(g01,z0,z1,n);
+            a11 = zeroes_bisection_fast(g11,z0,z1,n);
+
+            a = buffer_zip(a00,a01,a11,a10,epsilon/mz);
+            a00 = a01;
+            a10 = a11;
+            for(var i=0; i<a.length; i++){
+                t = a[i];
                 zip_buffer.push([
-                    [x,y,a00[k]],
-                    [x,y+dy,a01[k-shift1]],
-                    [x+dx,y+dy,a11[k-shift2]],
-                    [x+dx,y,a10[k-shift3]],
+                    [x-px,y-py,mz*(t[0]-pz)],
+                    [x-px,y-py+dy,mz*(t[1]-pz)],
+                    [x-px+dx,y-py+dy,mz*(t[2]-pz)],
+                    [x-px+dx,y-py,mz*(t[3]-pz)],
                     kx, ky
                 ]);
             }
@@ -82,29 +128,26 @@ function plot_implicit_sf(gx,f,d,xstep,ystep){
     kx = 0;
     for(x = x0; x<x1; x+=dx){
         kz = 1;
+        g00 = function(y){return f(x,y,z0);};
+        g10 = function(y){return f(x+dx,y,z0);};
+        a00 = zeroes_bisection_fast(g00,y0,y1,n);
+        a10 = zeroes_bisection_fast(g10,y0,y1,n);
         for(z = z0; z<z1; z+=dz){
-            var g00 = function(y){return f(x,y,z);};
-            var g01 = function(y){return f(x,y,z+dz);};
-            var g11 = function(y){return f(x+dx,y,z+dz);};
-            var g10 = function(y){return f(x+dx,y,z);};
-            var a00 = zeroes_bisection_fast(g00,y0,y1,n);
-            var a01 = zeroes_bisection_fast(g01,y0,y1,n);
-            var a11 = zeroes_bisection_fast(g11,y0,y1,n);
-            var a10 = zeroes_bisection_fast(g10,y0,y1,n);
-            var len = Math.min(a00.length,a01.length,a11.length,a10.length);
-            shift1=0; shift2=0; shift3=0;
-            for(var k=0; k<len; k++){
-                w00 = a00[k];
-                shift=false;
-                if(Math.abs(w00-a01[k-shift1])>epsilon){shift1++; shift=true;}
-                if(Math.abs(w00-a11[k-shift2])>epsilon){shift2++; shift=true;}
-                if(Math.abs(w00-a10[k-shift3])>epsilon){shift3++; shift=true;}
-                if(shift){continue;}
+            g01 = function(y){return f(x,y,z+dz);};
+            g11 = function(y){return f(x+dx,y,z+dz);};
+            a01 = zeroes_bisection_fast(g01,y0,y1,n);
+            a11 = zeroes_bisection_fast(g11,y0,y1,n);
+
+            a = buffer_zip(a00,a01,a11,a10,epsilon);
+            a00 = a01;
+            a10 = a11;
+            for(var i=0; i<a.length; i++){
+                t = a[i];
                 zip_buffer.push([
-                    [x,a00[k],z],
-                    [x,a01[k-shift1],z+dz],
-                    [x+dx,a11[k-shift2],z+dz],
-                    [x+dx,a10[k-shift3],z],
+                    [x-px,t[0]-py,mz*(z-pz)],
+                    [x-px,t[1]-py,mz*(z-pz+dz)],
+                    [x-px+dx,t[2]-py,mz*(z-pz+dz)],
+                    [x-px+dx,t[3]-py,mz*(z-pz)],
                     kx, kz
                 ]);
             }
@@ -116,29 +159,26 @@ function plot_implicit_sf(gx,f,d,xstep,ystep){
     ky = 0;
     for(y = y0; y<y1; y+=dy){
         kz = 1;
+        g00 = function(x){return f(x,y,z);};
+        g10 = function(x){return f(x,y+dy,z);};
+        a00 = zeroes_bisection_fast(g00,x0,x1,n);
+        a10 = zeroes_bisection_fast(g10,x0,x1,n);
         for(z = z0; z<z1; z+=dz){
-            var g00 = function(x){return f(x,y,z);};
-            var g01 = function(x){return f(x,y,z+dz);};
-            var g11 = function(x){return f(x,y+dy,z+dz);};
-            var g10 = function(x){return f(x,y+dy,z);};
-            var a00 = zeroes_bisection_fast(g00,x0,x1,n);
-            var a01 = zeroes_bisection_fast(g01,x0,x1,n);
-            var a11 = zeroes_bisection_fast(g11,x0,x1,n);
-            var a10 = zeroes_bisection_fast(g10,x0,x1,n);
-            var len = Math.min(a00.length,a01.length,a11.length,a10.length);
-            shift1=0; shift2=0; shift3=0;
-            for(var k=0; k<len; k++){
-                w00 = a00[k];
-                shift=false;
-                if(Math.abs(w00-a01[k-shift1])>epsilon){shift1++; shift=true;}
-                if(Math.abs(w00-a11[k-shift2])>epsilon){shift2++; shift=true;}
-                if(Math.abs(w00-a10[k-shift3])>epsilon){shift3++; shift=true;}
-                if(shift){continue;}
+            g01 = function(x){return f(x,y,z+dz);};
+            g11 = function(x){return f(x,y+dy,z+dz);};
+            a01 = zeroes_bisection_fast(g01,x0,x1,n);
+            a11 = zeroes_bisection_fast(g11,x0,x1,n);
+
+            a = buffer_zip(a00,a01,a11,a10,epsilon);
+            a00 = a01;
+            a10 = a11;
+            for(var i=0; i<a.length; i++){
+                t = a[i];
                 zip_buffer.push([
-                    [a00[k],y,z],
-                    [a01[k-shift1],y,z+dz],
-                    [a11[k-shift2],y+dy,z+dz],
-                    [a10[k-shift3],y+dy,z],
+                    [t[0]-px,y-py,mz*(z-pz)],
+                    [t[1]-px,y-py,mz*(z-pz+dz)],
+                    [t[2]-px,y-py+dy,mz*(z-pz+dz)],
+                    [t[3]-px,y-py+dy,mz*(z-pz)],
                     ky, kz
                 ]);
             }
@@ -151,7 +191,6 @@ function plot_implicit_sf(gx,f,d,xstep,ystep){
     var tile_buffer = gx.tile_buffer;
     var p00,p01,p11,p10;
     var p0,p1,p2,p3;
-    var t;
     for(var i=0; i<zip_buffer.length; i++){
         t = zip_buffer[i];
         p00=t[0]; p01=t[1]; p11=t[2]; p10=t[3];
@@ -173,15 +212,21 @@ function plot_implicit_sf(gx,f,d,xstep,ystep){
 }
 
 function plot_node(gx,t,index){
+    if(Array.isArray(t) && t[0]==="extern"){
+        plot_node_bivariate(gx,t[1],index);
+        return;
+    }
     if(Array.isArray(t) && t[0]==="="){
         t = ["-",t[1],t[2]];
     }
+    infer_type(t);
     var f = compile(t,["x","y","z"]);
     var m = gtile;
-    if(plot_refresh){
-        plot_implicit_sf(gx,f,2,1,1);
-        plot_refresh = false;
+    if(move_mode){
+        plot_implicit_sf(gx,f,2,1,1,4/ax);
+    }else if(gx.animation==true){
+        plot_implicit_sf(gx,f,1,2,2,4/ax);
     }else{
-        plot_implicit_sf(gx,f,m*0.5,gstep[0]*4/m,gstep[1]*4/m);
+        plot_implicit_sf(gx,f,m*0.5,gstep[0]*4/m,gstep[1]*4/m,1.2/ax);
     }
 }

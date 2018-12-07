@@ -5,7 +5,8 @@ var cdiff = cdiffh(0.001);
 
 var cglobal_ftab = {
 "+": "cadd", "-": "csub", "*": "cmul", "/": "cdiv",
-"^": "cpow", "~": "cneg", "=": "ceq",
+"^": "cpow", "~": "cneg", "=": "ceq", "&": "cand", "|": "cor",
+"<": "clt", ">": "cgt", "<=": "cle", ">=": "cge",
 abs: "ccabs", arg: "ccarg", sgn: "csgn", conj: "conj",
 re: "cre", im: "cim", Re: "cre", Im: "cim",
 floor: "cfloor", ceil: "cceil", rd: "crd", frac: "cfrac",
@@ -18,7 +19,7 @@ arcsin: "casin", arccos: "cacos", arctan: "catan", arccot: "cacot",
 asinh: "casinh", acosh: "cacosh", atanh: "catanh", acoth: "cacoth",
 arsinh: "casinh", arcosh: "cacosh", artanh: "catanh", arcoth: "cacoth",
 gamma: "cgamma", fac: "cfac", sum: "csum", prod: "cprod",
-diff: "cdiff", int: "cint", pow: "citerate", img: "cplot_img"
+diff: "cdiff", int: "cint", iter: "citerate", img: "cplot_img"
 };
 
 var cftab = {
@@ -33,6 +34,13 @@ ftab["colorfn"] = colorfn;
 function complex(x,y){
     return {re: x, im: y};
 }
+
+function clt(a,b){return {re: a.re<b.re?1:0,im:0};}
+function cgt(a,b){return {re: a.re>b.re?1:0,im:0};}
+function cle(a,b){return {re: a.re<=b.re?1:0,im:0};}
+function cge(a,b){return {re: a.re>=b.re?1:0,im:0};}
+function cand(a,b){return{re: a.re&b.re?1:0,im:0};}
+function cor(a,b){return {re: a.re|b.re?1:0,im:0};}
 
 function conj(z){
     return {re: z.re, im: -z.im};
@@ -348,7 +356,7 @@ function cdiffh(h){
     };
 }
 
-var g32 = [
+var GL32 = [
 [-0.9972638618494816, 0.007018610009470141],
 [-0.9856115115452684, 0.01627439473090563],
 [-0.9647622555875064, 0.02539206530926208],
@@ -383,22 +391,27 @@ var g32 = [
 [ 0.9972638618494816, 0.007018610009470141]
 ];
 
-function cgauss(f,a,b,n){
-    var h = (b-a)/n;
-    var p = 0.5*h;
-    var s = {re: 0, im: 0};
-    var N = g32.length;
-    var i,j,sj,q;
-    for(j=0; j<n; j++){
-        q = p+a+j*h;
-        sj = {re: 0, im: 0};
-        for(i=0; i<N; i++){
-            sj = cadd(sj,cmulr(f(p*g32[i][0]+q),g32[i][1]));
+function new_cgauss(g){
+    return function cgauss(f,a,b,n){
+        var m,s,sj,h,i,j,p,q,q0;
+        m = g.length;
+        h = (b-a)/n;
+        p = 0.5*h;
+        q0 = p+a;
+        s = {re: 0, im: 0};
+        for(j=0; j<n; j++){
+            q = q0+j*h;
+            sj = {re: 0, im: 0};
+            for(i=0; i<m; i++){
+                sj = cadd(sj,cmulr(f(p*g[i][0]+q),g[i][1]));
+            }
+            s = cadd(s,cmulr(sj,p));
         }
-        s = cadd(s,cmulr(sj,p));
-    }
-    return s;
+        return s;
+    };
 }
+
+var cgauss = new_cgauss(GL32);
 
 function cint(p,f,n){
     if(n==undefined) {n=1} else {n=Math.round(n.re)};
@@ -476,11 +489,6 @@ function ccompile_assignment(a,t,context){
     context.local[t[1]] = true;
 }
 
-var coperator_table = {
-    "<": "<", ">": ">", "<=": "<=", ">=": ">=",
-    "&": "&&", "|": "||"
-};
-
 function ccompile_expression(a,t,context){
     if(typeof t == "number"){
         a.push("{re:");
@@ -500,19 +508,13 @@ function ccompile_expression(a,t,context){
             load_ftab_extension(cglobal_ftab,"js/cftab-extension.js");
             throw new Repeat();
         }else{
-            throw new Err("Error: undefined variable: '"+t+"'.");
+            throw lang.undefined_variable(t);
         }
     }else if(Array.isArray(t)){
         var op = t[0];
         if(Array.isArray(op)){
             ccompile_expression(a,op,context);
             ccompile_application(a,"",t,context);
-        }else if(coperator_table.hasOwnProperty(op)){
-            a.push("(");
-            ccompile_expression(a,t[1],context);
-            a.push(coperator_table[op]);
-            ccompile_expression(a,t[2],context);
-            a.push(")");
         }else if(op=="fn"){
             ccompile_lambda_expression(a,t[1],t[2],context);
         }else if(op=="[]"){
@@ -527,13 +529,13 @@ function ccompile_expression(a,t,context){
             ccompile_expression(a,t[2],context);
             a.push("]");
         }else if(op=="if"){
-            a.push("(");
+            a.push("((");
             ccompile_expression(a,t[1],context);
-            a.push("?");
+            a.push(").re==1?");
             ccompile_expression(a,t[2],context);
             a.push(":");
             if(t.length<4){
-                a.push("NaN");
+                a.push("{re:NaN,im:NaN}");
             }else{
                 ccompile_expression(a,t[3],context);
             }

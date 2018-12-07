@@ -19,8 +19,9 @@
 <li><a href="#real-functions">Real functions</a>
 <li><a href="#implicit-functions">Implicit functions</a>
 <li><a href="#parametric-equations">Parametric equations</a>
-<li><a href="#initial-value-problems">Initial value problems</a>
+<li><a href="#discrete-functions">Discrete functions</a>
 <li><a href="#inequalities">Inequalities</a>
+<li><a href="#initial-value-problems">Initial value problems</a>
 <li><a href="#bivariate-functions">Bivariate functions</a>
 <li><a href="#parametric-surfaces">Parametric surfaces</a>
 <li><a href="#implicit-surfaces">Implicit surfaces</a>
@@ -39,18 +40,28 @@
   >A function and its derivative</a>.
 <li><a href="plot.htm?f(x),f%27(x),f%27%27(x),f%27%27%27(x);f(x):=sin(x)"
   >A function and its first three derivatives</a>.
+<li><a href="plot.htm?f(x),%20f(a)+f%27(a)*(x-a);%20a:=1,%20f(x):=sin(x)"
+  >A tangent to a function</a>.
 <li><a href="plot.htm?int(0,x,t.sin(t)/t)"
   >An antiderivative</a>.
 <li><a href="plot.htm?int(0,10,t.t%5e(x-1)*e%5e(-t))"
   >Integral representation of the gamma function</a>.
-<li><a href="plot.htm?(a:=rand(-4:4),x%5ea)"
+<li><a href="plot.htm?x%5en%20for%20n%20in%20-4:4"
   >A family of functions</a>.
 <li><a href="plot.htm?if(x%3c1,0,x-1)"
   >A distinction of cases</a>.
-<li><a href="plot.htm?f(x),%20f(a)+f%27(a)*(x-a);%20a:=1,%20f(x):=sin(x)"
-  >A tangent to a function</a>.
 <li><a href="plot.htm?p(x);%20p:=ipp(%5b0,0%5d,%5b1,1%5d,%5b2,0%5d)"
   >An interpolation polynomial</a>.
+<li><a href="plot.htm?(p(x);%20p:=ipp(%5b0,0%5d,%5b1,1%5d,%5bn,0%5d))%20for%20n%20in%202:8"
+  >A family of interpolation polynomials</a>.
+<li><a href="plot.htm?f(x);%20f(x):=x%5e2;;calc(%22table(f,0:4:0.5)%22)"
+  >Table for a function</a>.
+<li><a href="plot.htm?y=x%5ea;%20slider(%22a%22,0,2)"
+  >Slider for one parameter</a>.
+<li><a href="plot.htm?y=a*sin(b*x);%20slider(%22a%22,1,4);%20slider(%22b%22,1,4)"
+  >Sliders for two parameters</a>.
+<li><a href="plot-dark.htm?sin(x)"
+  >Dark mode</a>.
 </ul>
 
 <br>
@@ -60,6 +71,8 @@
   >An implicit function</a>.
 <li><a href="plot.htm?x%5e2-y%5e2=1,y=x,y=-x"
   >An implicit function and its asymptotes</a>.
+<li><a href="plot.htm?abs(x)%5en+abs(y)%5en=1%20for%20n%20in%20%5b1/2,1,2,4%5d"
+  >A family of implicit functions</a>.
 <li><a href="plot.htm?x%5e2+(y/x)%5e2=1;;scale(0.5)"
   >Lemniscate of Gerono</a>.
 </ul>
@@ -70,20 +83,45 @@
 <li><a href="plot.htm?%5bcos(t),sin(t)%5d"
   >The unit circle</a>.
 <li><a href="plot.htm?%5bcos(t),sin(2t)/2%5d;;scale(0.5)"
-  >Lemniscate of Gerono</a>.
+  >The lemniscate of Gerono</a>.
 <li><a href="plot.htm?%5bint(0,t,t.cos(t%5e2)),int(0,t,t.sin(t%5e2))%5d;t0:=-10,t1:=10;;scale(0.2)"
-  >Euler spiral</a>.
+  >An Euler spiral</a>.
+<li><a href="plot-bivariate.htm?%5bcos(t),sin(t),t%5d;;scale(0.5)"
+  >A helix</a>.
+<li><a href="plot.htm?%5bcos(t)+cos(2pi/m*n),sin(t)+sin(2pi/m*n)%5d%20for%20n%20in%200:m-1;%20m:=6"
+  >A family of parametric curves</a>.
+<li><a href="plot.htm?%5b(1-a)*(cos(t)-8)+a*(cos(t)+8),(1-a)*sin(t)+a*sin(2t)/2%5d%20for%20a%20in%200:1:0.2"
+  >Metamorphosis</a>.
+<li><a href="plot.htm?rot(45grad)*%5b4cos(t),sin(t)%5d"
+  >Applying a rotation matrix</a>.
+<li><a href="plot.htm?rot(n*grad)*%5b4cos(t),sin(t)%5d%20for%20n%20in%200:360:10"
+  >Applying a family of rotation matrices</a>.
+<li><a href="plot.htm?(sin(5t)+4)*%5bcos(t),sin(t)%5d"
+  >A star</a>.
 </ul>
 
+
 <br>
-<h3 id="initial-value-problems">Initial value problems</h3>
+<h3 id="discrete-functions">Discrete functions</h3>
 <ul>
-<li><a href="plot.htm?y%27=y;p:=%5b0,1%5d"
-  >A first order ODE</a>. Initial state is given by
-  <code>p:=[x<sub>0</sub>,y(x<sub>0</sub>)]</code>.
-<li><a href="plot.htm?y%27%27=-y;p:=%5b0,0,1%5d"
-  >A second order ODE</a>. Initial state is given by
-  <code>p:=[x<sub>0</sub>,y(x<sub>0</sub>),y'(x<sub>0</sub>)]</code>.
+<li><a href="plot.htm?points(a,1:20);%20a(n):=1/n"
+  >A sequence</a>, explicitly defined.
+<li><a href="plot.htm?points(a,1:20);%20a(1):=1,%20a(2):=1,%20a(n):=a(n-1)+a(n-2);;scale(1,2)"
+  >A sequence</a>, recursively defined.
+<li><a href="plot.htm?points(a,1:20),-2,2;%20a(n):=1/n"
+  >A sequence</a> and some bounds.
+<li><a href="plot.htm?points(s,1:100);%20a(n):=1/n,%20s(n):=sum(1,n,a);;scale(5,1)"
+  >A series</a>.
+<li><a href="plot.htm?points(f,1:2000);%20f(n):=phi(n);;scale(100)"
+  >Euler's totient function</a>.
+<li><a href="plot.htm?points(a,1:1000);%20a(0):=0,%20a(n):=a(n-1)+rand()-1/2;;scale(100,5)"
+  >A random walk</a>.
+<li><a href="plot.htm?points(Q,1:4000),%20x/2;%20Q(1):=1,%20Q(2):=1,%20Q(n):=Q(n-Q(n-1))+Q(n-Q(n-2));;scale(100)"
+  >Hofstadter's Q sequence</a>.
+<li><a href="plot.htm?points(a,1:20);%20a(1):=1,%20a(2):=1,%20a(n):=a(n-1)+a(n-2);;calc(%22table(a,1:20)%22)"
+  >Table for a sequence</a>.
+<li><a href="plot.htm?points(a,1:20);%20a(1):=1,%20a(2):=1,%20a(n):=a(n-1)+a(n-2);;calc(%22map(a,1:20)%22)"
+  >Value list for a sequence</a>.
 </ul>
 
 <br>
@@ -100,14 +138,41 @@
 </ul>
 
 <br>
+<h3 id="initial-value-problems">Initial value problems</h3>
+<ul>
+<li><a href="plot.htm?y%27=y;%20p:=%5b0,1%5d"
+  >A first order ODE</a>. Initial state is given by
+  <code>p:=[x<sub>0</sub>,y(x<sub>0</sub>)]</code>.
+<li><a href="plot.htm?y%27%27=-y;%20p:=%5b0,0,1%5d"
+  >A second order ODE</a>. Initial state is given by
+  <code>p:=[x<sub>0</sub>,y(x<sub>0</sub>),y'(x<sub>0</sub>)]</code>.
+<li><a href="vector-field.htm?y%27=y,%20%5b1,y%5d;%20p:=%5b0,1%5d"
+  >Slope field of a first order ODE</a>.
+<li><a href="plot.htm?f(x);%20f:=iter(y.pli(x.1+int(0,x,t.y(t)),-10,10,0.1),40,t.1)"
+  >A Picard iteration</a>.
+</ul>
+
+<br>
 <h3 id="bivariate-functions">Bivariate functions</h3>
 <ul>
 <li><a href="plot-bivariate.htm?cos(sqrt(x^2+y^2))"
   >A bivariate function</a>.
 <li><a href="plot-bivariate.htm?cos(sqrt(x^2+y^2));d(20)"
   >A bivariate function</a> in perspective projection.
+<li><a href="plot-bivariate.htm?10+exp(-(x-20)%5e2-(y-30)%5e2);%20P(20,30,10);;scale(0.2)"
+  >Displacement of the coordinate system</a>.
 <li><a href="plot-bivariate.htm?sin(10/x)sin(10/y);tile(0.2)"
   >Smaller tile resolution</a>. Takes some computing time.
+<li><a href="plot-bivariate.htm?f(x,y),%5ba(t),b(t),f(a(t),b(t))%5d;t0:=0,t1:=4,f(x,y):=sin(x)*sin(y),a(t):=t*cos(pi*t),b(t):=t*sin(pi*t);;scale(0.5)"
+  >Lifting a curve on a surface</a>.
+<li><a href="plot-bivariate.htm?f(x,y),f(x,y)=1;f(x,y):=x*sin(y)+y*cos(x),alpha:=0.6;;scale(1,1,5)"
+  >A bivariate function with a level curve</a>.
+<li><a href="plot-bivariate.htm?f(x,y),f(x,y)=c%20for%20c%20in%20-4:8;f(x,y):=x*sin(y)+y*cos(x);;scale(0.5)"
+  >A bivariate function with many level curves</a>.
+<li><a href="plot-bivariate.htm?4exp((-x%5e2-y%5e2)/a);%20slider(%22a%22,1,10);;scale(0.5)"
+  >Slider for one parameter</a>.
+<li><a href="plot-bivariate.htm?4exp(-abs(x/a)%5eb-abs(y/a)%5eb);%20slider(%22a%22,1,10),slider(%22b%22,1,4);;scale(0.5)"
+  >Sliders for two parameters</a>.
 </ul>
 
 <br>
@@ -119,24 +184,48 @@
   >A torus</a>.
 <li><a href="plot-bivariate.htm?%5ba*cos(u)sin(v),a*sin(u)sin(v),a*(cos(v)+ln(tan(v/2)))+b*u%5d;a:=4,b:=0.8,u1:=4pi,v0:=0.1,v1:=1"
   >Dini's surface</a>.
+<li><a href="plot-bivariate.htm?f(u,v),f(cos(t),sin(2t)+1);R:=4,r:=2,v1:=2pi,f(u,v):=%5b(R+r*cos(v))cos(u),(R+r*cos(v))sin(u),r*sin(v)%5d"
+  >A curve on a torus</a>.
 </ul>
 
 <br>
 <h3 id="implicit-surfaces">Implicit surfaces</h3>
 <ul>
-<li><a href="plot-implicit.htm?x%5e2+y%5e2+z%5e2=1;;scale(0.2)">Ball</a>.
-<li><a href="plot-implicit.htm?x%5e2+y%5e2-z%5e2=1;;scale(0.2)">Hyperboloid</a>.
+<li><a href="plot-implicit.htm?x%5e2+y%5e2+z%5e2=1;;scale(0.2)"
+  >A ball</a>.
+<li><a href="plot-implicit.htm?x%5e2+y%5e2-z%5e2=1;;scale(0.2)"
+  >A hyperboloid</a>.
 <li><a href="plot-implicit.htm?(x%5e2+y%5e2+z%5e2+R%5e2-r%5e2)%5e2=4R%5e2*(x%5e2+y%5e2);%20R:=4,r:=2,w(14);;scale(0.5)"
-  >Torus</a>.
+  >A torus</a>.
+<li><a href="plot-implicit.htm?x%5e2+y%5e2+x*z%5e2=r%5e2;%20slider(%22r%22,0,4);;scale(0.5)"
+  >Slider for one parameter</a>.
+<li><a href="plot-implicit.htm?x%5e2+y%5e2+x*abs(z)%5ea=r%5e2;%20slider(%22r%22,0,4),slider(%22a%22,1,4);;scale(0.5)"
+  >Sliders for two parameters</a>.
 </ul>
 
 <br>
 <h3 id="complex-functions">Complex functions</h3>
 <ul>
-<li><a href="plot-complex.htm?gamma(z)">The Gamma function</a>.
-<li><a href="plot-complex.htm?exp(1/z);scale(0.1)">A complex function</a> at given scale.
-<li><a href="plot-relief.htm?abs(z)">Relief of a complex function</a>.
-<li><a href="plot-mapping.htm?1/z;;scale(0.2)">Apply a complex mapping to the coordinate grid</a>.
+<li><a href="plot-complex.htm?gamma(z)"
+  >The Gamma function</a>.
+<li><a href="plot-complex.htm?exp(1/z);scale(0.1)"
+  >A complex function</a> at given scale.
+<li><a href="relief.htm?abs(z)"
+  >Relief of a complex function</a>.
+<li><a href="plot-mapping.htm?1/z;;scale(0.2)"
+  >Apply a complex mapping to the coordinate grid</a>.
+<li><a href="cplot.htm"
+  >A complex valued function</a>.
+<li><a href="path.htm"
+  >A complex valued function as a parametric curve</a>.
+<li><a href="cplot.htm?re(f(x)),im(f(x)),abs(f(x));%20f(x):=exp(i*x)"
+  >Real part, imaginary part und absolute value of a complex values function</a>.
+<li><a href="plot-complex.htm?f%27(z);%20f(z):=ln(z)"
+  >Derivative of a complex function</a>.
+<li><a href="plot-complex.htm?int(%5b1,if(im(z)%3c0,-i,i),z%5d,f);%20f(z):=1/z"
+  >Integral representation of the complex logarithm</a>.
+<li><a href="plot-complex.htm?int(%5b0,20%5d,t.t%5e(z-1)*e%5e(-t))"
+  >Integral representation of the gamma function</a>.
 </ul>
 
 <br>
@@ -150,10 +239,11 @@
   >A Julia set</a>.
 <li><a href="fractal.htm?z%5e2-0.8+0.2i;%20z0(c):=c,%20P(-0.06,0.8),scale(0.005)"
   >A Julia set</a> at given position and scale.
-<li><a href="newton.htm">A Newton fractal</a>.
+<li><a href="newton.htm"
+  >A Newton fractal</a>.
 <li><a href="newton.htm?z-f(z,c)/(z.f(z,c))%27(z);f(z,c):=z%5e3+(c-1)*z-c,z0(c):=0;;scale(0.02),P(0.31396,1.63954)"
   >Newton fractal</a> from initial value zero for a family of cubic polynomials.
-<li><a href="plot.htm?(r:=x,pow(x.r*x*(1-x),1000,rand(0,1)));;scale(0.05,0.1),P(3.46,0.54)"
+<li><a href="plot.htm?(r:=x,iter(x.r*x*(1-x),1000,rand(0,1)));;scale(0.05,0.1),P(3.46,0.54)"
   >Bifurcation diagram of the logistic map</a>.
 </ul>
 

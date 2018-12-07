@@ -315,24 +315,467 @@ function ipp(a){
     };
 }
 
-function table(f,a){
+function trailing_zero_count(s){
+    var decimal_point = false;
+    for(var i=0; i<s.length; i++){
+        if(s[i]=='.'){decimal_point = true;}
+        else if(s[i]=='e' || s[i]=='E'){return 0;}
+    }
+    if(!decimal_point) return 0;
+    var i = s.length-1;
+    var count = 0;
+    while(i>=0 && (s[i]=='0' || s[i]=='.')){
+        count++;
+        i--;
+    }
+    return count;
+}
+
+function trailing_zero_count_min(a){
+    if(a.length==0) return 0;
+    var count = trailing_zero_count(a[0]);
+    for(var i=1; i<a.length; i++){
+        count = Math.min(count,trailing_zero_count(a[i]));
+    }
+    return count;
+}
+
+function trim_by_count(a,count){
+    for(var i=0; i<a.length; i++){
+        var n = a[i].length;
+        a[i] = a[i].slice(0,n-count);
+    }
+}
+
+function trim_trailing_zeroes_min(a){
+    var count = trailing_zero_count_min(a);
+    trim_by_count(a,count);
+}
+
+function ftos_prec(n){
+    return function(x){return x.toFixed(n);};
+}
+
+function table(f,a,prec){
+    if(prec==undefined) prec=10;
+    var ftos = ftos_prec(prec);
+    var ax = [];
+    var ay = [];
+    for(var i=0; i<a.length; i++){
+        ax.push(str(a[i],ftos));
+    }
+    for(var i=0; i<a.length; i++){
+        ay.push(str(f(a[i]),ftos));
+    }
+    trim_trailing_zeroes_min(ax);
+    trim_trailing_zeroes_min(ay);
+    
     var b = ["<table class='bt'><tr><th>x<th>y"];
     for(var i=0; i<a.length; i++){
         b.push("<tr><td style='text-align: right'>");
-        b.push(str(a[i]));
+        b.push(ax[i]);
         b.push("<td style='text-align: right'>");
-        b.push(str(f(a[i])));
+        b.push(ay[i]);
     }
     b.push("</table>");
     return b.join("");
+}
+
+function idm(n){
+    var a = [];
+    for(var i=0; i<n; i++){
+        var t = [];
+        for(var j=0; j<n; j++){t.push(i==j?1:0);}
+        a.push(t);
+    }
+    return a;
+}
+
+function diag(v){
+    var a = [];
+    for(var i=0; i<v.length; i++){
+        var t = [];
+        for(var j=0; j<v.length; j++){t.push(i==j?v[i]:0);}
+        a.push(t);
+    }
+    return a;
+}
+
+function diag_variadic(){
+    if(arguments.length==1 && Array.isArray(arguments[0])){
+        return diag(arguments[0]);
+    }else{
+        return diag(arguments);
+    }
+}
+
+function det(A){
+    var n = A.length;
+    if(n==2){
+        return A[0][0]*A[1][1]-A[0][1]*A[1][0];
+    }else if(n==3){
+        return (
+            A[0][0]*(A[1][1]*A[2][2]-A[1][2]*A[2][1]) -
+            A[1][0]*(A[0][1]*A[2][2]-A[0][2]*A[2][1]) +
+            A[2][0]*(A[0][1]*A[1][2]-A[0][2]*A[1][1])
+        );
+    }else{
+        return NaN;
+    }
+}
+
+function copy_array(a){
+    var b = [];
+    for(var i=0; i<a.length; i++){
+        if(Array.isArray(a[i])){
+            b.push(copy_array(a[i]));
+        }else{
+            b.push(a[i]);
+        }
+    }
+    return b;
+}
+
+function mul_inplace(r,v){
+    for(var i=0; i<v.length; i++){
+        v[i] = r*v[i];
+    }
+}
+
+function mul_add_inplace(a,v,b,w){
+    for(var i=0; i<v.length; i++){
+        v[i] = a*v[i]+b*w[i];
+    }
+}
+
+function swap(a,i,j){
+    var t = a[i];
+    a[i] = a[j];
+    a[j] = t;
+}
+
+function pivoting(A,B,n,j){
+    var m = Math.abs(A[j][j]);
+    var k = j;
+    for(var i=j+1; i<n; i++){
+        if(m<Math.abs(A[i][j])){
+            m = Math.abs(A[i][j]);
+            k = i;
+        }
+    }
+    swap(A,k,j);
+    swap(B,k,j);
+}
+
+function gauss_jordan(A,B,n){
+    var i,j;
+    for(j=0; j<n; j++){
+        pivoting(A,B,n,j);
+        mul_inplace(1/A[j][j],B[j]);
+        mul_inplace(1/A[j][j],A[j]);
+        for(i=j+1; i<n; i++){
+            if(A[i][j]!=0){
+                mul_add_inplace(1/A[i][j],B[i],-1,B[j]);
+                mul_add_inplace(1/A[i][j],A[i],-1,A[j]);
+            }
+        }
+    }
+    for(i=0; i<n-1; i++){
+        for(j=i+1; j<n; j++){
+            mul_add_inplace(1,B[i],-A[i][j],B[j]);
+            mul_add_inplace(1,A[i],-A[i][j],A[j]);
+        }
+    }
+    return B;
+}
+
+function matrix_inv(A){
+    var n = A[0].length;
+    var E = idm(n);
+    A = copy_array(A);
+    return gauss_jordan(A,E,n);
+}
+
+function matrix_pow(A,n){
+    if(n<0){
+        A = matrix_inv(A);
+        n = -n;
+    }else if(n==0){
+        return idm(A.length);
+    }
+    n--;
+    var M = A;
+    while(n>0){
+        if(n%2==1){
+            M = mul_matrix_matrix(M,A);
+        }
+        A = mul_matrix_matrix(A,A);
+        n = Math.floor(n/2);
+    }
+    return M;
+}
+
+function unit_vector(v){
+    var r = abs_vec(v);
+    return mul_scalar_vector(1/r,v);
+}
+
+function nablah(h){
+    return function nabla(f,x){
+        if(x.length==2){
+            return [
+                (f(x[0]+h,x[1])-f(x[0]-h,x[1]))/(2*h),
+                (f(x[0],x[1]+h)-f(x[0],x[1]-h))/(2*h),
+            ];
+        }else{
+            return [
+                (f(x[0]+h,x[1],x[2])-f(x[0]-h,x[1],x[2]))/(2*h),
+                (f(x[0],x[1]+h,x[2])-f(x[0],x[1]-h,x[2]))/(2*h),
+                (f(x[0],x[1],x[2]+h)-f(x[0],x[1],x[2]-h))/(2*h)
+            ];
+        }
+    }
+}
+
+function rotation_matrix(phi){
+    return [
+        [Math.cos(phi),-Math.sin(phi)],
+        [Math.sin(phi), Math.cos(phi)]
+    ];
+}
+
+function apply(f,v){
+    return f.apply(null,v);
+}
+
+function pli_nodes(t){
+    return function(x){
+        if(t.length==0){return NaN;}
+        var a = 0;
+        var b = t.length-1;
+        if(x<t[a][0] || x>t[b][0]){return NaN;}
+        var i;
+        while(a<=b){
+            i = a+Math.round((b-a)/2);
+            if(x<t[i][0]){b = i-1;}else{a = i+1;}
+        }
+        i = a;
+        if(i>0){
+            var p1 = t[i-1];
+            var p2 = t[i];
+            return (p2[1]-p1[1])/(p2[0]-p1[0])*(x-p2[0])+p2[1];
+        }else{
+            return NaN;
+        }
+    };
+}
+
+function pli_fn(f,xa,xb,d){
+    var a = range(xa,xb,d).map(function(x){return f(x);});
+    return pli(xa,d,a);
+}
+
+function pli_general(x,y,z,w){
+    if(y==undefined || z==undefined){
+        return pli_nodes(x);
+    }else if(w==undefined){
+        return pli(x,y,z);
+    }else{
+        return pli_fn(x,y,z,w);
+    }
+}
+
+function laplace_transform(f,x){
+    var g = function(t){return f(t)*Math.exp(-x*t);};
+    return gauss(g,0,40,1);
+}
+
+function delta(x,a){
+    var t = Math.sqrt(Math.PI)*a*x;
+    return a*Math.exp(-t*t);
+}
+
+function gcd(a,b){
+    a = Math.round(Math.abs(a));
+    b = Math.round(Math.abs(b));
+    var h;
+    while(b>0){
+        h = a%b; a=b; b=h;
+    }
+    return a;
+}
+
+function lcm(a,b){
+    a = Math.abs(a);
+    b = Math.abs(b);
+    return a/gcd(a,b)*b;
+}
+
+function gcd_list(a){
+    if(a.length==0) return 0;
+    var y = a[0];
+    for(var i=1; i<a.length; i++){
+        y = gcd(y,a[i]);
+    }
+    return y;
+}
+
+function lcm_list(a){
+    if(a.length==0) return 0;
+    var y = a[0];
+    for(var i=1; i<a.length; i++){
+        y = lcm(y,a[i]);
+    }
+    return y;
+}
+
+function gcd_variadic(){
+    if(arguments.length==1 && Array.isArray(arguments[0])){
+        return gcd_list(arguments[0]);
+    }else{
+        return gcd_list(arguments);
+    }
+}
+
+function lcm_variadic(){
+    if(arguments.length==1 && Array.isArray(arguments[0])){
+        return lcm_list(arguments[0]);
+    }else{
+        return lcm_list(arguments);
+    }
+}
+
+function isprime(n){
+    n = Math.round(n);
+    if(n<2) return 0;
+    var m = Math.floor(Math.sqrt(n));
+    for(var k=2; k<=m; k++){
+        if(n%k==0) return 0;
+    }
+    return 1;
+}
+
+function euler_phi(n){
+    n = Math.round(n);
+    if(n<1) return NaN;
+    var y = 1;
+    for(var p=2; p<=n; p++){
+        if(isprime(p) && n%p==0){
+            y = y*(1-1/p);
+        }
+    }
+    return Math.round(n*y);
+}
+
+function carmichael_lambda(n){
+    if(n<1) return NaN;
+    if(n==1) return 1;
+    var a,i,y;
+    a = factor(n);
+    for(i=0; i<a.length; i++){
+        y = a[i];
+        if(y[0]==2){
+            if(y[1]==1) y = 1;
+            else if(y[1]==2) y = 2;
+            else y = Math.pow(2,y[1]-2);
+        }else{
+            y = Math.pow(y[0],y[1]-1)*(y[0]-1);
+        }
+        a[i] = y;
+    }
+    return lcm_list(a);
+}
+
+function nextprime(n){
+    while(!isprime(n))n++;
+    return n;
+}
+
+function factor(n){
+    n = Math.round(n);
+    var a,k,m;
+    a = [];
+    k = 2;
+    while(k<=n){
+        m = 0;
+        while(n%k==0){n=n/k; m++;}
+        if(m!=0) a.push([k,m]);
+        k = nextprime(k+1);
+    }
+    return a;
+}
+
+function pcf(x){
+    var y = 0;
+    for(var k=1; k<=x; k++){
+        y+=isprime(k);
+    }
+    return y;
+}
+
+function sigma(k,n){
+    k = Math.round(k);
+    n = Math.round(n);
+    if(n<1) return NaN;
+    var y = 0;
+    for(var d=1; d<=n; d++){
+        if(n%d==0) y+=Math.pow(d,k);
+    }
+    return y;
+}
+
+var slider_table = {};
+
+function slider(id,a,b){
+    if(slider_table.hasOwnProperty(id)){
+        var range = slider_table[id];
+        range[0] = a;
+        range[1] = b;
+        return;
+    }
+    
+    var range = [a,b];
+    slider_table[id] = range;
+    ftab[id] = a;
+
+    var slider = document.createElement("input");
+    slider.setAttribute("type","range");
+    slider.setAttribute("min","0");
+    slider.setAttribute("max","100");
+    slider.setAttribute("value","0");
+    if(graphics.w>540){
+        slider.setAttribute("style","width: 14em;");
+    }
+    slider.addEventListener("input",function(){
+        var t = this.value/100;
+        ftab[id] = range[0]*(1-t)+range[1]*t;
+        graphics.animation = true;
+        update(graphics);
+    });
+    slider.addEventListener("change",function(){
+        graphics.animation = false;
+        update(graphics);
+    });
+    var content = document.createElement("div");
+    content.innerHTML = id+": ";
+    content.appendChild(slider);
+    var adds = document.getElementById("adds");
+    adds.appendChild(content);
 }
 
 var ftab_extension = {
   PT: ChebyshevT, PU: ChebyshevU, PH: Hermite, 
   PP: Legendre, PL: Laguerre, bc: bc,
   psi: psi, digamma: digamma,
-  zeta: zeta, table: table, ipp: ipp,
-  Si: Si, Ci: Ci
+  zeta: zeta, ipp: ipp, table: table,
+  Si: Si, Ci: Ci, det: det, unit: unit_vector, I: idm,
+  diag: diag_variadic, _matrix_pow_: matrix_pow,
+  nabla: nablah(0.001), apply: apply, rot: rotation_matrix,
+  pli: pli_general, L: laplace_transform, delta: delta,
+  gcd: gcd_variadic, lcm: lcm_variadic,
+  isprime: isprime, prime: isprime, pcf: pcf, factor: factor,
+  phi: euler_phi, lambda: carmichael_lambda, sigma: sigma,
+  slider: slider
 };
 
 
