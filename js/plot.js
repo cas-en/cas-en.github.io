@@ -89,7 +89,8 @@ var ftab = {
 };
 
 var keyword_table = {
-    "for": "for", "in": "in"
+    "for": "for", "in": "in",
+    "and": "&", "or": "|"
 };
 
 var lang_points = "points";
@@ -1198,25 +1199,29 @@ function comparison(i){
 
 function conjunction(i){
     var x = comparison(i);
-    var t = i.a[i.index];
-    if(t[0]==Symbol && t[1]=='&'){
-        i.index++;
-        var y = comparison(i);
-        return ["&",x,y];
-    }else{
-        return x;
+    while(1){
+        var t = i.a[i.index];
+        if(t[0]==Symbol && t[1]=='&'){
+            i.index++;
+            var y = comparison(i);
+            x = ["&",x,y];
+        }else{
+            return x;
+        }
     }
 }
 
 function disjunction(i){
     var x = conjunction(i);
-    var t = i.a[i.index];
-    if(t[0]==Symbol && t[1]=='|'){
-        i.index++;
-        var y = conjunction(i);
-        return ["|",x,y];
-    }else{
-        return x;
+    while(1){
+        var t = i.a[i.index];
+        if(t[0]==Symbol && t[1]=='|'){
+            i.index++;
+            var y = conjunction(i);
+            x = ["|",x,y];
+        }else{
+            return x;
+        }
     }
 }
 
