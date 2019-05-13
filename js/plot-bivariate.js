@@ -19,6 +19,9 @@ var LINE_SHADOW = 2;
 
 var position = [0,0,0];
 
+sys_xyz.line_color = "#00000060";
+sys_xyz.fill_color = "#000000a0";
+
 function set_position(x,y,z){
     if(y==undefined) y=0;
     if(z==undefined) z=0;
@@ -114,6 +117,37 @@ function mouse_up_handler(e){
     }
 }
 
+function touch_move(e){
+    if(e.touches.length!=0){
+        e = e.touches[0];
+        move_mode = true;
+        var gx = graphics;
+        pid_stack = [];
+        var dx = e.clientX-clientXp;
+        var dy = e.clientY-clientYp;
+        gx.phi += 0.004*dx;
+        gx.theta = clamp(gx.theta+0.004*dy,theta_min,theta_max);
+        clientXp = e.clientX;
+        clientYp = e.clientY;
+        update(gx);
+    }
+}
+
+function touch_start(e){
+    if(e.touches.length!=0){
+        e = e.touches[0];
+        clientXp = e.clientX;
+        clientYp = e.clientY;
+    }
+}
+
+function touch_end(){
+    if(move_mode){
+        move_mode = false;
+        update(graphics);
+    }
+}
+
 function new_system_xyz(last_gx){
     var canvas = document.getElementById("canvas1");
     var w = window.innerWidth;
@@ -125,6 +159,9 @@ function new_system_xyz(last_gx){
     if(last_gx==undefined){
         canvas.addEventListener("mousemove", mouse_move_handler, false);
         canvas.addEventListener("mouseup", mouse_up_handler, false);
+        canvas.addEventListener("touchstart", touch_start, false);
+        canvas.addEventListener("touchend", touch_end, false);
+        canvas.addEventListener("touchmove", touch_move, false);
         gx.phi = 0.5*Math.PI;
         gx.theta = 0;
     }else{
@@ -396,13 +433,15 @@ function flush_tile_buffer(gx,alpha,lw){
     }
 }
 
-function system_xyz(gx,proj,wx){
+function system_xyz(gx){
+    if(sys_mode==0) return;
     var context = gx.context;
     var proj = gx.proj;
-    context.strokeStyle = "#00000060";
-    context.fillStyle = "#000000a0";
+    var wx = 10/ax;
+
+    context.strokeStyle = sys_xyz.line_color;
+    context.fillStyle = sys_xyz.fill_color;
     context.lineWidth = 4;
-    wx = 10/ax;
 
     // The lines are split into parts so that only the nearest
     // parts are affected when proj returns NaN.
@@ -433,9 +472,9 @@ function plot_sf(gx,f,d,xstep,ystep){
     var dx = d/ax;
     var dy = d/ay;
     var u0 = grx[0]/ax;
-    var u1 = grx[1]/ax;
+    var u1 = grx[1]/ax-0.01*dx;
     var v0 = gry[0]/ay;
-    var v1 = gry[1]/ay;
+    var v1 = gry[1]/ay-0.01*dy;
     var mz = az/ax;
     
     var x0 = position[0];
@@ -468,6 +507,10 @@ function plot_sf(gx,f,d,xstep,ystep){
 
 function vector_product(vx,vy,vz,wx,wy,wz){
     return [vy*wz-vz*wy, vz*wx-vx*wz, vx*wy-vy*wx];
+}
+
+function exterior_product(ax,ay,bx,by){
+    return ax*by-bx*ay;
 }
 
 function plot_psf(gx,f,d,ustep,vstep){
@@ -512,6 +555,14 @@ function plot_psf(gx,f,d,ustep,vstep){
                 p10[0]-p00[0],p10[1]-p00[1],p10[2]-p00[2],
                 p01[0]-p00[0],p01[1]-p00[1],p01[2]-p00[2]
             );
+            var sign = Math.sign(exterior_product(
+                p1[0]-p0[0], p1[1]-p0[1],
+                p3[0]-p0[0], p3[1]-p0[1]
+            ));
+            e[0] = sign*e[0];
+            e[1] = sign*e[1];
+            e[2] = sign*e[2];
+
             a.push([TILE,-gxt-gyt,p0,p1,p2,p3,p00[2],
                 mesh_cond(ku/ustep),mesh_cond(kv/vstep),e]);
             kv++;
@@ -721,7 +772,7 @@ function plot(gx){
     if(a[0].length>0){
         t = ast(a[0]);
         if(Array.isArray(t) && t[0]===";"){
-            for(var i=2; i<t.length; i++){
+            for(var i=t.length-1; i>=2; i--){
                 eval_statements(t[i]);
             }
             t = t[1];
@@ -760,7 +811,7 @@ function plot(gx){
     var lw = gtile<0.4?(gtile<0.15?2.4:1.8):1.4;
     var alpha = Math.round(float_re(pftab["alpha"])*255);
     flush_tile_buffer(gx,alpha,lw);
-    system_xyz(gx,10/ax);
+    system_xyz(gx);
 }
 
 function plot_img(w,h){

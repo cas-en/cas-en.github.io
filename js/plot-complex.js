@@ -9,7 +9,7 @@ var cglobal_ftab = {
 "<": "clt", ">": "cgt", "<=": "cle", ">=": "cge",
 abs: "ccabs", arg: "ccarg", sgn: "csgn", conj: "conj",
 re: "cre", im: "cim", Re: "cre", Im: "cim",
-floor: "cfloor", ceil: "cceil", rd: "crd", frac: "cfrac",
+floor: "cfloor", ceil: "cceil", mod: "cmod", rd: "crd", frac: "cfrac",
 exp: "cexp", sqrt: "csqrt", root: "croot", rt: "croot",
 ln: "cln", lg: "clg", ld: "cld", lb: "cld", log: "clog",
 sin: "csin", cos: "ccos", tan: "ctan", cot: "ccot",
@@ -18,7 +18,9 @@ asin: "casin", acos: "cacos", atan: "catan", acot: "cacot",
 arcsin: "casin", arccos: "cacos", arctan: "catan", arccot: "cacot",
 asinh: "casinh", acosh: "cacosh", atanh: "catanh", acoth: "cacoth",
 arsinh: "casinh", arcosh: "cacosh", artanh: "catanh", arcoth: "cacoth",
-gamma: "cgamma", fac: "cfac", sum: "csum", prod: "cprod",
+gamma: "cgamma_variadic", fac: "cfac", "Gamma": "ciGamma",
+sum: "csum", prod: "cprod", range: "crange",
+map: "map", filter: "cfilter", 
 diff: "cdiff", int: "cint", iter: "citerate", img: "cplot_img"
 };
 
@@ -35,6 +37,7 @@ function complex(x,y){
     return {re: x, im: y};
 }
 
+function ceq(a,b){return {re: a.re==b.re&a.im==b.im?1:0,im:0};}
 function clt(a,b){return {re: a.re<b.re?1:0,im:0};}
 function cgt(a,b){return {re: a.re>b.re?1:0,im:0};}
 function cle(a,b){return {re: a.re<=b.re?1:0,im:0};}
@@ -105,6 +108,7 @@ function cfloor(z){return {re:Math.floor(z.re),im:Math.floor(z.im)};}
 function cceil(z){return {re:Math.ceil(z.re),im:Math.ceil(z.im)};}
 function crd(z){return {re:Math.round(z.re),im:Math.round(z.im)};}
 function cfrac(z){return {re:frac(z.re),im:frac(z.im)};}
+function cmod(z,m){return csub(z,cmul(m,cfloor(cdiv(z,m))));}
 
 function cexp(z){
     var r = Math.exp(z.re);
@@ -282,7 +286,73 @@ function cfac(z){
     return cgamma(caddr(z,1));
 }
 
+function ccfGamma(a,x,n){
+    var y = {re:0,im:0};
+    for(var k=n; k>=1; k--){
+        y = cdiv(
+            cmulr(csub({re:k,im:0},a),k),
+            caddr(csub(csub(x,y),a),2*k+1)
+        );
+    }
+    return cdiv(
+        cmul(cexp(cneg(x)),cpow(x,a)),
+        caddr(csub(csub(x,y),a),1)
+    );
+}
+
+function cpsgamma(a,x,n){
+    var y = {re:0,im:0};
+    var p = crdiv(1,a);
+    for(var k=1; k<n; k++){
+        y = cadd(y,p);
+        p = cdiv(cmul(p,x),caddr(a,k));
+    }
+    return cmul(cmul(y,cexp(cneg(x))),cpow(x,a));
+}
+
+function ciGamma(a,x){
+    if(cabs(x)>cabs(a)+1){
+        if(x.re>0 || Math.abs(x.im)>0){
+            return ccfGamma(a,x,20);
+        }
+    }
+    if(a.im==0 && a.re<=0 && a.re==Math.round(a.re)){
+        a = cadd(a,{re:0,im:1E-5});
+    }
+    return csub(cgamma(a),cpsgamma(a,x,20));
+}
+
+function cigamma(a,x){
+    if(cabs(x)>cabs(a)+1){
+        if(x.re>0 || Math.abs(x.im)>0){
+            return csub(cgamma(a),ccfGamma(a,x,20));
+        }
+    }
+    return cpsgamma(a,x,20);
+}
+
+function cgamma_variadic(x,y){
+    if(y==undefined){
+        return cgamma(x);
+    }else{
+        return cigamma(x,y);
+    }
+}
+
+function clist_sum(a){
+    var y = {re: 0, im: 0};
+    for(var i=0; i<a.length; i++){y = cadd(y,a[i]);}
+    return y;
+}
+
+function clist_prod(a){
+    var y = {re: 1, im: 0};
+    for(var i=0; i<a.length; i++){y = cmul(y,a[i]);}
+    return y;
+}
+
 function csum(a,b,f){
+    if(b==undefined){return clist_sum(a);}
     a = Math.round(a.re);
     b = Math.round(b.re);
     var y = {re: 0, im: 0};
@@ -293,6 +363,7 @@ function csum(a,b,f){
 }
 
 function cprod(a,b,f){
+    if(b==undefined){return clist_prod(a);}
     a = Math.round(a.re);
     b = Math.round(b.re);
     var y = {re: 1, im: 0};
@@ -300,6 +371,19 @@ function cprod(a,b,f){
         y = cmul(y,f({re: k, im: 0}));
     }
     return y;
+}
+
+function crange(a,b,step){
+    var r = range(a.re,b.re,step==undefined?undefined:step.re);
+    return r.map(function(x){return {re: x, im: 0};});
+}
+
+function cfilter(p,a){
+    var b = [];
+    for(var k=0; k<a.length; k++){
+        if(p(a[k]).re>0.5) b.push(a[k]);
+    }
+    return b;
 }
 
 var cdiff_tab = [
@@ -503,9 +587,9 @@ function ccompile_expression(a,t,context){
             a.push(t);
         }else if(cglobal_ftab.hasOwnProperty(t)){
             a.push(cglobal_ftab[t]);
-        }else if(!ftab_extension_loaded){
+        }else if(!extension_loaded.ftab){
             async_continuation = "await";
-            load_ftab_extension(cglobal_ftab,"js/cftab-extension.js");
+            load_extension(cglobal_ftab,"ftab","js/ext-cftab.js");
             throw new Repeat();
         }else{
             throw lang.undefined_variable(t);
@@ -641,14 +725,21 @@ function color_lb_repeat(w){
     var r = cabs(w);
     var phi = carg_positive(w);
     var iso_phi = 0.5*pulse(6*phi/Math.PI,100);
-    return hsl_to_rgb_u8(phi,0.9,Math.tanh(0.25+0.5*smod(ld(r),1)+iso_phi));
+    return hsl_to_rgb_u8(phi,0.9,Math.tanh(0.25+0.2*smod(ld(r),1)+iso_phi));
+}
+
+function color_rect(w){
+    var pre = 255*pulse(w.re,200);
+    var pim = 255*pulse(w.im,200);
+    return [255-Math.min(255,pim+pre),255-Math.min(255,pim+0.5*pre),255-pre];
 }
 
 var color_method_tab = {
     "0": color_hsl,
     "1": color_hsl_and_rect,
     "2": color_hsl_and_polar,
-    "3": color_lb_repeat
+    "3": color_lb_repeat,
+    "4": color_rect
 };
 
 var img_color = color_hsl;
@@ -683,7 +774,7 @@ async function cplot(gx,f,n,cond){
         if(cancel(pid,index,pid_stack)) return;
     }
 
-    system(gx,true,0.02,0.2);
+    system(gx,0.02,0.2);
     flush(gx);
     labels(gx);
     busy = false;
@@ -705,7 +796,7 @@ async function cplot_async(gx,f){
 
 var plot_refresh = false;
 
-function refresh(gx){
+function move_refresh(gx){
     plot_refresh = true;
     update(gx);
 }
@@ -729,7 +820,7 @@ function global_definition(t){
 }
 
 function calc(){
-    calculate(ccompile);
+    calculate("complex");
 }
 
 function cplot_img(w,h){

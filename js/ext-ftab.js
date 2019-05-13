@@ -122,31 +122,72 @@ function gamma_diff(x){
     }
 }
 
-function hzeta(s,a){
-    var y=0, N=18, Npa=N+a;
-    for(var k=a; k<Npa; k++){
-        y+=Math.pow(k,-s);
+var B2ndivfac2n = [
+1.0,
+0.08333333333333333,
+-0.001388888888888889,
+3.306878306878307e-5,
+-8.267195767195768e-7,
+2.08767569878681e-8,
+-5.284190138687493e-10,
+1.3382536530684679e-11,
+-3.3896802963225827e-13,
+8.586062056277845e-15,
+-2.174868698558062e-16,
+5.50900282836023e-18,
+-1.3954464685812525e-19,
+];
+
+function hzeta(s,a,N,M){
+    var y=0;
+    for(var k=0; k<N; k++){
+        y+=Math.pow(a+k,-s);
     }
-    var s2=s*(s+1)*(s+2);
-    var s4=s2*(s+3)*(s+4);
-    y+=Math.pow(Npa,1-s)/(s-1)+0.5*Math.pow(Npa,-s);
-    y+=s*Math.pow(Npa,-s-1)/12;
-    y-=s2*Math.pow(Npa,-s-3)/720;
-    y+=s4*Math.pow(Npa,-s-5)/30240;
-    y-=s4*(s+5)*(s+6)*Math.pow(Npa,-s-7)/1209600;
-    return y;
-}
+    var p = s;
+    var x = B2ndivfac2n[1]*Math.pow(N+a,-1)*p;
+    for(var n=2; n<=M; n++){
+        var kmax = 2*n-2;
+        p = p*(s+kmax-1)*(s+kmax);
+        x+=B2ndivfac2n[n]*Math.pow(N+a,1-2*n)*p;
+    }
+    return y+Math.pow(N+a,-s)*((N+a)/(s-1)+0.5+x);
+};
 
 function zeta(s,a){
     if(a==undefined){
         if(s>-1){
-            return hzeta(s,1);
+            return s>60?1:hzeta(s,1,18,6);
         }else{
             var a = 2*Math.pow(2*Math.PI,s-1)*Math.sin(Math.PI*s/2);
-            return a*gamma(1-s)*hzeta(1-s,1);
+            return a*gamma(1-s)*hzeta(1-s,1,18,6);
         }
     }else{
-        return hzeta(s,a);
+        var N = a>-10?18:Math.floor(Math.abs(a))+4;
+        return hzeta(s,a,N,6);
+    }
+}
+
+function bernoulliB(n){
+    return n==0?1:-n*zeta(1-n);
+}
+
+function bernoulliBm(n){
+    return n==1?-0.5:bernoulliB(n);
+}
+
+function Beta(x,y){
+    if(x<0 || y<0){
+        return gamma(x)*gamma(y)/gamma(x+y);
+    }else{
+        return Math.exp(lngammapx(x)+lngammapx(y)-lngammapx(x+y));
+    }
+}
+
+function Bvariadic(x,y){
+    if(y==undefined){
+        return bernoulliB(x);
+    }else{
+        return Beta(x,y);
     }
 }
 
@@ -158,15 +199,25 @@ function polygamma(m,x){
     if(m==0){
         return digamma(x);
     }else{
-        return Math.pow(-1,m+1)*gamma(m+1)*hzeta(m+1,x);
+        var N = x>-10?18:Math.floor(Math.abs(x))+4;
+        return Math.cos(Math.PI*(m+1))*gamma(m+1)*hzeta(m+1,x,N,6);
     }
+}
+
+function generalized_polygamma(s,x){
+    var f = function(s){
+        return Math.exp(GAMMA*s)*hzeta(s+1,x,18,6)/gamma(-s);
+    };
+    return Math.exp(-GAMMA*s)*diff(f,s);
 }
 
 function psi(x,y){
     if(y==undefined){
         return digamma(x);
-    }else{
+    }else if(x>=0 && x==Math.round(x)){
         return polygamma(x,y);
+    }else{
+        return generalized_polygamma(x,y);
     }
 }
 
@@ -315,6 +366,57 @@ function ipp(a){
     };
 }
 
+function Delta(f,x,n){
+    if(n==undefined || n==1){
+        return f(x+1)-f(x);
+    }else if(n==0){
+        return f(x);
+    }else{
+        return Delta(f,x+1,n-1)-Delta(f,x,n-1);
+    }
+}
+
+function stirling1(n,k){
+    if(n==k){
+        return 1;
+    }else if(n<=0 || k<=0){
+        return 0;
+    }else{
+        return (n-1)*stirling1(n-1,k)+stirling1(n-1,k-1);
+    }
+}
+
+function stirling2(n,k){
+    if(n==k){
+        return 1;
+    }else if(n<=0 || k<=0){
+        return 0;
+    }else{
+        return k*stirling2(n-1,k)+stirling2(n-1,k-1);
+    }
+}
+
+function s1(n,k){
+    n = Math.round(n);
+    k = Math.round(k);
+    if(n<0 && k<0){
+        return s2(-k,-n);
+    }else{
+        return n<k?0:stirling1(n,k);
+    }
+}
+
+function s2(n,k){
+    n = Math.round(n);
+    k = Math.round(k);
+    if(n<0 && k<0){
+        return s1(-k,-n);
+    }else{
+        return n<k?0:stirling2(n,k);
+    }
+
+}
+
 function trailing_zero_count(s){
     var decimal_point = false;
     for(var i=0; i<s.length; i++){
@@ -374,7 +476,11 @@ function table(f,a,prec){
     for(var i=0; i<a.length; i++){
         b.push("<tr><td style='text-align: right'>");
         b.push(ax[i]);
-        b.push("<td style='text-align: right'>");
+        if(ay[i].length>0 && ay[i][0]=='['){
+            b.push("<td>");
+        }else{
+            b.push("<td style='text-align: right'>");
+        }
         b.push(ay[i]);
     }
     b.push("</table>");
@@ -406,21 +512,6 @@ function diag_variadic(){
         return diag(arguments[0]);
     }else{
         return diag(arguments);
-    }
-}
-
-function det(A){
-    var n = A.length;
-    if(n==2){
-        return A[0][0]*A[1][1]-A[0][1]*A[1][0];
-    }else if(n==3){
-        return (
-            A[0][0]*(A[1][1]*A[2][2]-A[1][2]*A[2][1]) -
-            A[1][0]*(A[0][1]*A[2][2]-A[0][2]*A[2][1]) +
-            A[2][0]*(A[0][1]*A[1][2]-A[0][2]*A[1][1])
-        );
-    }else{
-        return NaN;
     }
 }
 
@@ -515,9 +606,93 @@ function matrix_pow(A,n){
     return M;
 }
 
+function pivoting_det(A,n,j){
+    var m = Math.abs(A[j][j]);
+    var k = j;
+    for(var i=j+1; i<n; i++){
+        if(m<Math.abs(A[i][j])){
+            m = Math.abs(A[i][j]);
+            k = i;
+        }
+    }
+    if(k==j){
+        return false;
+    }else{
+        swap(A,k,j);
+        return true;
+    }
+}
+
+function gauss_det(A,n){
+    A = copy_array(A);
+    var y = 1;
+    for(var j=0; j<n; j++){
+        if(pivoting_det(A,n,j)){y = -y;}
+        for(var i=j+1; i<n; i++){
+            if(A[i][j]!=0){
+                y = y/A[j][j];
+                mul_add_inplace(A[j][j],A[i],-A[i][j],A[j]);
+            }
+        }
+        y = y*A[j][j];
+    }
+    return y;
+}
+
+function det(A){
+    var n = A.length;
+    if(n==2){
+        return A[0][0]*A[1][1]-A[0][1]*A[1][0];
+    }else if(n==3){
+        return (
+            A[0][0]*(A[1][1]*A[2][2]-A[1][2]*A[2][1]) -
+            A[1][0]*(A[0][1]*A[2][2]-A[0][2]*A[2][1]) +
+            A[2][0]*(A[0][1]*A[1][2]-A[0][2]*A[1][1])
+        );
+    }else{
+        return gauss_det(A,n);
+    }
+}
+
+function trace(A){
+    var n = A.length;
+    var y = 0;
+    for(var i=0; i<n; i++){
+        y+=A[i][i];
+    }
+    return y;
+}
+
+function transpose(A){
+    var m = A.length;
+    var n = A[0].length;
+    var B = [];
+    for(var j=0; j<n; j++){
+        var v = [];
+        for(var i=0; i<m; i++){
+            v.push(A[i][j]);
+        }
+        B.push(v);
+    }
+    return B;
+}
+
 function unit_vector(v){
     var r = abs_vec(v);
     return mul_scalar_vector(1/r,v);
+}
+
+function vdiff(f,t,n){
+    if(n==undefined || n==1){
+        return mul_scalar_tensor(500,
+            sub_tensor_tensor(f(t+0.001),f(t-0.001))
+        );
+    }else{
+        var h = n<3? 0.001:(n<4? 0.01:0.1);
+        return mul_scalar_tensor(0.5/h,
+            sub_tensor_tensor(vdiff(f,t+h,n-1),vdiff(f,t-h,n-1))
+        );
+    }
 }
 
 function nablah(h){
@@ -534,7 +709,39 @@ function nablah(h){
                 (f(x[0],x[1],x[2]+h)-f(x[0],x[1],x[2]-h))/(2*h)
             ];
         }
-    }
+    };
+}
+
+function jacobih(h){
+    var sub_tt = sub_tensor_tensor;
+    var mul_st = mul_scalar_tensor;
+    return function jacobi(f,x){
+        if(x.length==2){
+            return transpose([
+                mul_st(0.5/h,sub_tt(f(x[0]+h,x[1]),f(x[0]-h,x[1]))),
+                mul_st(0.5/h,sub_tt(f(x[0],x[1]+h),f(x[0],x[1]-h))),
+            ]);
+        }else{
+            return transpose([
+                mul_st(0.5/h,sub_tt(f(x[0]+h,x[1],x[2]),f(x[0]-h,x[1],x[2]))),
+                mul_st(0.5/h,sub_tt(f(x[0],x[1]+h,x[2])-f(x[0],x[1]-h,x[2]))),
+                mul_st(0.5/h,sub_tt(f(x[0],x[1],x[2]+h)-f(x[0],x[1],x[2]-h)))
+            ]);
+        }
+    };
+}
+
+function divoph(h){
+    return function divop(F,x){
+        if(x.length==2){
+            return (
+                (F(x[0]+h,x[1])[0]-F(x[0]-h,x[1])[0])/(2*h)+
+                (F(x[0],x[1]+h)[1]-F(x[0],x[1]-h)[1])/(2*h)
+            );
+        }else{
+            return NaN;
+        }
+    };
 }
 
 function rotation_matrix(phi){
@@ -542,6 +749,29 @@ function rotation_matrix(phi){
         [Math.cos(phi),-Math.sin(phi)],
         [Math.sin(phi), Math.cos(phi)]
     ];
+}
+
+function matrix_mul_add_inplace(m,n,A,x,B){
+    for(var i=0; i<m; i++){
+        for(var j=0; j<n; j++){
+            A[i][j] = A[i][j]+x*B[i][j];
+        }
+    }
+}
+
+function expm(A){
+    var X = mul_scalar_tensor(1/1024,A);
+    var n = X.length;
+    var M = X;
+    var Y = idm(n);
+    var p = 1;
+    matrix_mul_add_inplace(n,n,Y,1,M);
+    for(var k=2; k<6; k++){
+        p = p*k;
+        M = mul_matrix_matrix(M,X);
+        matrix_mul_add_inplace(n,n,Y,1/p,M);
+    }
+    return matrix_pow(Y,1024);
 }
 
 function apply(f,v){
@@ -691,8 +921,14 @@ function nextprime(n){
     return n;
 }
 
+var factor_tab = {};
+
 function factor(n){
     n = Math.round(n);
+    var sn = String(n);
+    if(factor_tab.hasOwnProperty(sn)){
+        return factor_tab[sn];
+    }
     var a,k,m;
     a = [];
     k = 2;
@@ -702,6 +938,7 @@ function factor(n){
         if(m!=0) a.push([k,m]);
         k = nextprime(k+1);
     }
+    factor_tab[sn] = a;
     return a;
 }
 
@@ -711,6 +948,21 @@ function pcf(x){
         y+=isprime(k);
     }
     return y;
+}
+
+var pseq_tab = [0,2];
+
+function prime_sequence(n){
+    if(n<pseq_tab.length){
+        return pseq_tab[n];
+    }else{
+        var p = pseq_tab[pseq_tab.length-1];
+        while(n>=pseq_tab.length){
+            p = nextprime(p+1);
+            pseq_tab.push(p);
+        }
+        return p;
+    }
 }
 
 function sigma(k,n){
@@ -724,58 +976,302 @@ function sigma(k,n){
     return y;
 }
 
-var slider_table = {};
-
-function slider(id,a,b){
-    if(slider_table.hasOwnProperty(id)){
-        var range = slider_table[id];
-        range[0] = a;
-        range[1] = b;
-        return;
+function divisors(n){
+    var a = [];
+    for(var d=1; d<=n; d++){
+        if(n%d==0) a.push(d);
     }
-    
-    var range = [a,b];
-    slider_table[id] = range;
-    ftab[id] = a;
-
-    var slider = document.createElement("input");
-    slider.setAttribute("type","range");
-    slider.setAttribute("min","0");
-    slider.setAttribute("max","100");
-    slider.setAttribute("value","0");
-    if(graphics.w>540){
-        slider.setAttribute("style","width: 14em;");
-    }
-    slider.addEventListener("input",function(){
-        var t = this.value/100;
-        ftab[id] = range[0]*(1-t)+range[1]*t;
-        graphics.animation = true;
-        update(graphics);
-    });
-    slider.addEventListener("change",function(){
-        graphics.animation = false;
-        update(graphics);
-    });
-    var content = document.createElement("div");
-    content.innerHTML = id+": ";
-    content.appendChild(slider);
-    var adds = document.getElementById("adds");
-    adds.appendChild(content);
+    return a;
 }
 
-var ftab_extension = {
-  PT: ChebyshevT, PU: ChebyshevU, PH: Hermite, 
-  PP: Legendre, PL: Laguerre, bc: bc,
-  psi: psi, digamma: digamma,
-  zeta: zeta, ipp: ipp, table: table,
-  Si: Si, Ci: Ci, det: det, unit: unit_vector, I: idm,
-  diag: diag_variadic, _matrix_pow_: matrix_pow,
-  nabla: nablah(0.001), apply: apply, rot: rotation_matrix,
-  pli: pli_general, L: laplace_transform, delta: delta,
-  gcd: gcd_variadic, lcm: lcm_variadic,
-  isprime: isprime, prime: isprime, pcf: pcf, factor: factor,
-  phi: euler_phi, lambda: carmichael_lambda, sigma: sigma,
-  slider: slider
+function moebius(n){
+    if(Math.round(n)<=0) return 0;
+    var a = factor(n);
+    for(var i=0; i<a.length; i++){
+        if(a[i][1]>1) return 0;
+    }
+    return a.length%2==0?1:-1;
+}
+
+function all(p,a){
+    for(var i=0; i<a.length; i++){
+        if(p(a[i])==0) return 0;
+    }
+    return 1;
+}
+
+function any(p,a){
+    for(var i=0; i<a.length; i++){
+        if(p(a[i])==1) return 1;
+    }
+    return 0;
+}
+
+function count(p,a){
+    var y = 0;
+    for(var i=0; i<a.length; i++){
+        if(p(a[i])==1) y++;
+    }
+    return y;
+}
+
+function sample(F){
+    return invab(F,Math.random(),-100,100);
+}
+
+function samples(F,n){
+    var a = [];
+    for(var i=0; i<n; i++){
+        a.push(sample(F));
+    }
+    return a;
+}
+
+function cdf(a,x){
+    if(x==undefined){
+        return function(x){return cdf(a,x);};
+    }else{
+        var y = 0;
+        for(var k=0; k<a.length; k++){
+            if(a[k]<=x) y++;
+        }
+        return y/a.length;
+    }
+}
+
+function F21(a1,a2,b,x){
+    var s = 1;
+    var p = 1;
+    for(var k=0; k<80; k++){
+        p = p*x*(a1+k)*(a2+k)/(b+k)/(k+1);
+        s+=p;
+    }
+    return s;
+}
+
+function iBeta(x,a,b){
+    return Math.pow(x,a)/a*F21(a,1-b,a+1,x);
+}
+
+function riBeta(x,a,b){
+    return iBeta(x,a,b)/Beta(a,b);
+}
+
+function pdfu(x,a,b){
+    if(a==undefined) a=0;
+    if(b==undefined) b=1;
+    return a<=x && x<=b? 1/(b-a):0;
+}
+
+function cdfu(x,a,b){
+    if(a==undefined) a=0;
+    if(b==undefined) b=1;
+    return x<a? 0:(x<=b? (x-a)/(b-a):1);
+}
+
+function pdfN(x,mu,sigma){
+    if(sigma==undefined) sigma = 1;
+    if(mu==undefined) mu = 0;
+    var a = (x-mu)/sigma;
+    return Math.exp(-0.5*a*a)/(Math.sqrt(2*Math.PI)*sigma);
+}
+
+function cdfN(x,mu,sigma){
+    if(sigma==undefined) sigma = 1;
+    if(mu==undefined) mu = 0;
+    return 0.5+0.5*erf((x-mu)/(Math.SQRT2*sigma));
+}
+
+function pdfLogN(x,mu,sigma){
+    var a = 1/(x*sigma*Math.sqrt(2*Math.PI));
+    return a*Math.exp(-0.5*Math.pow((Math.log(x)-mu)/sigma,2));
+}
+
+function cdfLogN(x,mu,sigma){
+    return 0.5+0.5*erf((Math.log(x)-mu)/(sigma*Math.sqrt(2)));
+}
+
+function pdfExp(x,lambda){
+    if(x<0) return 0;
+    return lambda*Math.exp(-lambda*x);
+}
+
+function cdfExp(x,lambda){
+    if(x<0) return 0;
+    return 1-Math.exp(-lambda*x);
+}
+
+function pdfchisq(x,n){
+    if(x<=0) return 0;
+    return Math.pow(x,n/2-1)*Math.exp(-x/2)/(Math.pow(2,n/2)*gamma(n/2));
+}
+
+function cdfchisq(x,n){
+    if(x<=0) return 0;
+    return igamma(n/2,x/2)/gamma(n/2);
+}
+
+function qfchisq(p,n){
+    var F = function(x){return cdfchisq(x,n);};
+    return inv(F,p);
+}
+
+function pdfst(x,n){
+    var a = gamma((n+1)/2)/(gamma(n/2)*Math.sqrt(n*Math.PI));
+    return a*Math.pow(1+x*x/n,-(n+1)/2);
+}
+
+function cdfst(x,n){
+    var a = Math.sqrt(x*x+n);
+    return riBeta((x+a)/(2*a),n/2,n/2);
+}
+
+function pdfF(x,m,n){
+    if(x<0) return 0;
+    var a = Math.pow(m,0.5*m)*Math.pow(n,0.5*n)/Beta(0.5*m,0.5*n);
+    return a*Math.pow(x,0.5*m-1)/Math.pow(m*x+n,0.5*(m+n));
+}
+
+function cdfF(x,m,n){
+    if(x<=0) return 0;
+    return riBeta(m*x/(m*x+n),0.5*m,0.5*n);
+}
+
+function qfF(p,m,n){
+    var F = function(x){return cdfF(m,n,x);};
+    return inv(F,p);
+}
+
+function pdfW(x,a,b){
+    if(x<0) return 0;
+    return a/b*Math.pow(x/b,a-1)*Math.exp(-Math.pow(x/b,a));
+}
+
+function cdfW(x,a,b){
+    if(x<0) return 0;
+    return 1-Math.exp(-Math.pow(x/b,a));
+}
+
+function pdfGamma(x,b,p){
+    if(x<=0) return 0;
+    return Math.pow(b,p)/gamma(p)*Math.pow(x,p-1)*Math.exp(-b*x);
+}
+
+function cdfGamma(x,b,p){
+    if(x<0) return 0;
+    return igamma(p,b*x)/gamma(p);
+}
+
+function pdfBeta(x,p,q){
+    if(x<0 || x>1) return 0;
+    return Math.pow(x,p-1)*Math.pow(1-x,q-1)/Beta(p,q);
+}
+
+function cdfBeta(x,p,q){
+    if(x<0) return 0;
+    if(x>1) return 1;
+    return riBeta(x,p,q);
+}
+
+function pmfB(k,n,p){
+    k = Math.round(k);
+    if(k<0 || k>n) return 0;
+    return bc(n,k)*Math.pow(p,k)*Math.pow(1-p,n-k);
+}
+
+function cdfB(x,n,p){
+    var s = 0;
+    x = Math.round(x);
+    for(var k=0; k<=x; k++){
+      s+=bc(n,k)*Math.pow(p,k)*Math.pow(1-p,n-k);
+    }
+    return s;
+}
+
+function pmfG(k,p){
+    k = Math.round(k);
+    if(k<1) return 0;
+    return p*Math.pow(1-p,k-1);
+}
+
+function cdfG(x,p){
+    x = Math.round(x);
+    if(x<1) return 0;
+    return 1-Math.pow(1-p,x);
+}
+
+function pmfH(k,N,K,n){
+    N = Math.round(N); K = Math.round(K);
+    n = Math.round(n); k = Math.round(k);
+    if(k<Math.max(0,n+K-N) || k>Math.min(n,K)) return 0;
+    return bc(K,k)*bc(N-K,n-k)/bc(N,n);
+}
+
+function cdfH(x,N,K,n){
+    var s=0;
+    for(var k=0; k<=x; k++){
+        s+=pmfH(N,K,n,k);
+    }
+    return s;
+}
+
+function pmfP(k,lambda){
+    k = Math.round(k);
+    if(k<0) return 0;
+    return Math.exp(-lambda)*Math.pow(lambda,k)/fac(k);
+}
+
+function cdfP(x,lambda){
+    x = Math.round(x);
+    var s=0;
+    for(var k=0; k<=x; k++){
+        s+=pmfP(lambda,k);
+    }
+    return s;
+}
+
+function pmfLog(k,p){
+    k = Math.round(k);
+    if(k<1) return 0;
+    return -Math.pow(p,k)/(k*Math.log(1-p));
+}
+
+function cdfLog(x,p){
+    x = Math.round(x);
+    var s=0;
+    for(var k=1; k<=x; k++){
+        s+=pmfLog(p,k);
+    }
+    return s;
+}
+
+extension_table.ftab = {
+PT: ChebyshevT, PU: ChebyshevU, PH: Hermite, 
+PP: Legendre, PL: Laguerre, bc: bc, s1: s1, s2: s2,
+psi: psi, digamma: digamma,
+zeta: zeta, B: Bvariadic, Bm: bernoulliBm, ipp: ipp,
+table: table, Wertetabelle: table, Delta: Delta,
+Si: Si, Ci: Ci, det: det, unit: unit_vector, I: idm,
+diag: diag_variadic, _matrix_pow_: matrix_pow, expm: expm,
+_vdiff_: vdiff, nabla: nablah(0.001), divop: divoph(0.001),
+jacobi: jacobih(0.001),
+apply: apply, rot: rotation_matrix, tr: trace, tp: transpose,
+pli: pli_general, L: laplace_transform, delta: delta,
+gcd: gcd_variadic, ggT: gcd_variadic,
+lcm: lcm_variadic, kgV: lcm_variadic,
+isprime: isprime, prim: isprime, pcf: pcf, factor: factor,
+phi: euler_phi, lambda: carmichael_lambda, sigma: sigma,
+pseq: prime_sequence, divisors: divisors, Teiler: divisors,
+mu: moebius, all: all, any: any, count: count,
+sample: sample, samples: samples, cdf: cdf,
+cdfu: cdfu, pdfu: pdfu, cdfN: cdfN, pdfN: pdfN,
+cdfLogN: cdfLogN, pdfLogN: pdfLogN, cdfExp: cdfExp, pdfExp: pdfExp,
+cdfchisq: cdfchisq, pdfchisq: pdfchisq, cdfst: cdfst, pdfst: pdfst,
+cdfF: cdfF, pdfF: pdfF, cdfW: cdfW, pdfW: pdfW,
+cdfGamma: cdfGamma, pdfGamma: pdfGamma,
+cdfBeta: cdfBeta, pdfBeta: pdfBeta, pmfB: pmfB, cdfB: cdfB,
+cmfG: pmfG, cdfG: cdfG, pmfH: pmfH, cdfH: cdfH,
+pmfP: pmfP, cdfP: cdfP, pmfLog: pmfLog, cdfLog: cdfLog
 };
 
 

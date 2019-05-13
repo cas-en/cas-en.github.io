@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Graphers</title>
+  <link rel="stylesheet" href="css/main-dark.css">
+</head>
+<body>
+
+<table class="navigation">
+<tr>
+<td><a href="index.html">Home</a>
+<td><a href="doc.htm">Manual</a>
+<td><a href="graphers.htm">Light mode</a>
+</table>
+
+<h2>Function graphers, visualisation</h2>
+
+<h3>Table of contents</h3>
+<ol>
+<li><a href="#real-functions">Real functions</a>
+<li><a href="#implicit-functions">Implicit functions</a>
+<li><a href="#parametric-curves">Parametric curves</a>
+<li><a href="#discrete-functions">Discrete functions</a>
+<li><a href="#inequalities">Inequalities</a>
+<li><a href="#initial-values-problems">Initial value problems</a>
+</ol>
+
+<br>
+<h3 id="real-functions">Real functions</h3>
+<ul>
+<li><a href="plot-dark.htm?sin(x)"
+  >A function</a>.
+<li><a href="plot-dark.htm?sin(x),cos(x),tan(x),cot(x)"
+  >Several functions</a>.
+<li><a href="plot-dark.htm?f(x),f%27(x);%20f(x):=sin(x)"
+  >A function and its derivative</a>.
+<li><a href="plot-dark.htm?f(x),f%27(x),f%27%27(x),f%27%27%27(x);%20f(x):=sin(x)"
+  >A function and its first three derivatives</a>.
+<li><a href="plot-dark.htm?f(x),%20f(a)+f%27(a)*(x-a);%20a:=1;%20f(x):=sin(x)"
+  >Tangent of a function</a>.
+<li><a href="plot-dark.htm?int(0,x,t.sin(t)/t)"
+  >An antiderivative</a>.
+<li><a href="plot-dark.htm?int(0,10,t.t%5e(x-1)*e%5e(-t))"
+  >Integral representation of the gamma function.</a>.
+<li><a href="plot-dark.htm?x%5en%20for%20n%20in%20-4:4"
+  >A family of functions</a>.
+<li><a href="plot-dark.htm?if(x%3c1,0,x-1)"
+  >A distinction of cases</a>.
+<li><a href="plot-dark.htm?p(x);%20p:=ipp(%5b0,0%5d,%5b1,1%5d,%5b2,0%5d)"
+  >An interpolation polynomial</a>.
+<li><a href="plot-dark.htm?(p(x);%20p:=ipp(%5b0,0%5d,%5b1,1%5d,%5bn,0%5d))%20for%20n%20in%202:8"
+  >A family of interpolation polynomials</a>.
+<li><a href="plot-dark.htm?f(x);%20f(x):=x%5e2;;calc(%22table(f,0:4:0.5)%22)"
+  >A table of some values of a function</a>.
+<li><a href="plot-dark.htm?y=x%5ea;%20slider(a,0,2)"
+  >Slider for one parameter</a>.
+<li><a href="plot-dark.htm?y=a*sin(b*x);%20slider(a,1,4),%20slider(b,1,4)"
+  >Slider for two parameters</a>.
+<li><a href="plot-dark.htm?sum(1,n,k.sin((2k-1)*x)/(2k-1));%20slider(n,1,20)"
+  >Partial sum of a Fourier series</a>.
+</ul>
+
+<br>
+<h3 id="implicit-functions">Implicit functions</h3>
+<ul>
+<li><a href="plot-dark.htm?x%5e2-y%5e2=1"
+  >An implicit function</a>.
+<li><a href="plot-dark.htm?x%5e2-y%5e2=1,y=x,y=-x"
+  >An implicit function with asymptotes</a>.
+<li><a href="plot-dark.htm?%7cx%7c%5en+%7cy%7c%5en=1%20for%20n%20in%20%5b1/2,1,2,4%5d"
+  >A family of implicit functions</a>.
+<li><a href="plot-dark.htm?x%5e2+(y/x)%5e2=1;;scale(0.5)"
+  >Gerono's lemniscate</a>.
+</ul>
+
+<br>
+<h3 id="parametric-curves">Parametric curves</h3>
+<ul>
+<li><a href="plot-dark.htm?%5bcos(t),sin(t)%5d"
+  >The unit circle</a>.
+<li><a href="plot-dark.htm?%5bcos(t),sin(2t)/2%5d;;scale(0.5)"
+  >Gerono's lemniscate</a>.
+<li><a href="plot-dark.htm?%5bt*cos(pi*t),t*sin(pi*t)%5d;t0:=0,t1:=4"
+  >A spiral</a>.
+<li><a href="plot-dark.htm?%5bint(0,t,t.cos(t%5e2)),int(0,t,t.sin(t%5e2))%5d;%20t0:=-10;%20t1:=10;;scale(0.2)"
+  >A clothoid</a>.
+<li><a href="plot-dark.htm?%5bcos(t)+cos(2pi/m*n),sin(t)+sin(2pi/m*n)%5d%20for%20n%20in%200:m-1;%20m:=6"
+  >A family of parmetric curves</a>.
+<li><a href="plot-dark.htm?%5b(1-a)*(cos(t)-8)+a*(cos(t)+8),(1-a)*sin(t)+a*sin(2t)/2%5d%20for%20a%20in%200:1:0.2"
+  >Metamorphosis</a>.
+<li><a href="plot-dark.htm?rot(45grad)*%5b4cos(t),sin(t)%5d"
+  >Applying a rotation matrix</a>.
+<li><a href="plot-dark.htm?rot(n*grad)*%5b4cos(t),sin(t)%5d%20for%20n%20in%200:360:10"
+  >Applying a family of rotation matrices</a>.
+<li><a href="plot-dark.htm?(sin(5t)+4)*%5bcos(t),sin(t)%5d"
+  >A smooth star</a>.
+</ul>
+
+<br>
+<h3 id="discrete-functions">Discrete functions</h3>
+<ul>
+<li><a href="plot-dark.htm?points(a,1:20);%20a(n):=1/n"
+  >A sequence</a> in explicit form.
+<li><a href="plot-dark.htm?points(a,1:20);%20a(1):=1,%20a(2):=1,%20a(n):=a(n-1)+a(n-2);;scale(1,2)"
+  >A sequence</a> in recursive form.
+<li><a href="plot-dark.htm?points(a,1:20),-2,2;%20a(n):=1/n"
+  >A sequence</a> with bounds.
+<li><a href="plot-dark.htm?points(s,1:100);%20a(n):=1/n,%20s(n):=sum(1,n,a);;scale(5,1)"
+  >A series</a>.
+<li><a href="plot-dark.htm?points(f,1:2000);%20f(n):=phi(n);;scale(100)"
+  >Euler's totient function</a>.
+<li><a href="plot-dark.htm?points(a,1:1000);%20a(0):=0,%20a(n):=a(n-1)+rand()-1/2;;scale(100,5)"
+  >A random walk</a>.
+<li><a href="plot-dark.htm?points(Q,1:4000),%20x/2;%20Q(1):=1,%20Q(2):=1,%20Q(n):=Q(n-Q(n-1))+Q(n-Q(n-2));;scale(100)"
+  >Hofstadter's Q sequence</a>.
+<li><a href="plot-dark.htm?points(a,1:20);%20a(1):=1,%20a(2):=1,%20a(n):=a(n-1)+a(n-2);;calc(%22table(a,1:20)%22)"
+  >Table of some values of a sequence</a>.
+<li><a href="plot-dark.htm?points(a,1:20);%20a(1):=1,%20a(2):=1,%20a(n):=a(n-1)+a(n-2);;calc(%22map(a,1:20)%22)"
+  >List of some values of a sequence</a>.
+</ul>
+
+<br>
+<h3 id="inequalities">Inequalities</h3>
+<ul>
+<li><a href="plot-dark.htm?%7cx%7c%3c1"
+  >An inequality in one variable</a>.
+<li><a href="plot-dark.htm?%7cx%7c+%7cy%7c%3c1"
+  >An inequality in two variables</a>.
+<li><a href="plot-dark.htm?%7cx%7c+%7cy%7c%3c2,%20%7cy%7c%3c1"
+  >A system of inequalities</a>. Covering visible.
+<li><a href="plot-dark.htm?%7cx%7c+%7cy%7c%3c2%20&%20%7cy%7c%3c1"
+  >Solution set of the system</a>.
+</ul>
+
+<br>
+<h3 id="initial-values-problems">Initial value problems</h3>
+<ul>
+<li><a href="plot-dark.htm?y%27=y;%20p:=%5b0,1%5d"
+  >A first order ODE</a>. Initial values given by
+  <code>p:=[x<sub>0</sub>,y(x<sub>0</sub>)]</code>.
+<li><a href="plot-dark.htm?y%27%27=-y;%20p:=%5b0,0,1%5d"
+  >A second order ODE</a>. Initial values given by
+  <code>p:=[x<sub>0</sub>,y(x<sub>0</sub>),y'(x<sub>0</sub>)]</code>.
+<li><a href="plot-dark.htm?f(x);%20f:=iter(y.pli(x.1+int(0,x,t.y(t)),-10,10,0.1),40,t.1)"
+  >A Picard iteration</a>.
+<li><a href="plot-dark.htm?f(x)%5b0%5d;%20f(x):=expm(x*A)*%5b1,0%5d;%20A:=%5b%5b0,1%5d,%5b-1,0%5d%5d"
+  >Solving a system by matrix exponential</a>.
+<li><a href="plot-dark.htm?u(x),v(x);%20%5bu,v%5d%27=%5bv,-u%5d;%20p:=%5b0,1,0%5d"
+  >An autonomous system of two ODE</a>.
+<li><a href="plot-dark.htm?u(x),v(x);%20%5bu,v%5d%27=%5bv,u*x%5d;%20p:=%5b0,1,0%5d"
+  >A non-autonomous system of two ODE</a>.
+<li><a href="plot-dark.htm?x(t);%20x%27%27=-x/%7cx%7c%5e3;%20p:=%5b0,%5b4,0%5d,%5b0,0.2%5d%5d;%20t1:=20;%20tw:=20"
+  >The one body problem</a>.
+  <a href="plot-dark.htm?points(x,0:20:0.5);%20x%27%27=-x/%7cx%7c%5e3;%20p:=%5b0,%5b4,0%5d,%5b0,0.2%5d%5d;%20t1:=20;%20tw:=20"
+  >Stroboskopic view</a>.
+<li><a href="plot-dark.htm?%5bx(t),y(t)%5d;%20%5bx,y,vx,vy%5d%27=%5bvx,vy,-x/%7c%5bx,y%5d%7c%5e3,-y/%7c%5bx,y%5d%7c%5e3%5d;%20p:=%5b0,4,0,0,0.2%5d;%20t1:=20;%20tw:=20"
+  >The one body problem as a first order system</a>.
+<li><a href="plot-dark.htm?x(t),1/%7c%5bx,y%5d%7c;%20x%27%27=x/%7cx%7c%5e3;%20p:=%5b0,%5b-10,1%5d,%5b2,0%5d%5d;%20t1:=20;%20tw:=20"
+  >Scattering at a Coulomb potential</a>.
+<li><a href="plot-dark.htm?%5bx(t),z(t)%5d;%20%5bx,y,z%5d%27=%5b10(y-x),x*(28-z)-y,x*y-8/3*z%5d;%20p:=%5b0,1,0,20%5d;%20t1:=40;%20tw:=40;;scale(5),P(0,20)"
+  >The Lorenz attractor</a>. Projection on the xz plane.
+</ul>
+
+</body>
+</html>
+

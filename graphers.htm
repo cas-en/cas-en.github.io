@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Examples</title>
+  <title>Graphers</title>
   <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
@@ -11,9 +11,10 @@
 <tr>
 <td><a href="index.html">Home</a>
 <td><a href="doc.htm">Manual</a>
+<td><a href="graphers-dark.htm">Dark mode</a>
 </table>
 
-<h2>Examples</h2>
+<h2>Function graphers, visualisation</h2>
 <h3>Table of contents</h3>
 <ol>
 <li><a href="#real-functions">Real functions</a>
@@ -36,13 +37,13 @@
 <li><a href="plot.htm?sin(x)"
   >A function</a>.
 <li><a href="plot.htm?sin(x),cos(x),tan(x),cot(x)"
-  >Many functions</a>.
+  >Several functions</a>.
 <li><a href="plot.htm?f(x),f%27(x);f(x):=sin(x)"
   >A function and its derivative</a>.
 <li><a href="plot.htm?f(x),f%27(x),f%27%27(x),f%27%27%27(x);f(x):=sin(x)"
   >A function and its first three derivatives</a>.
 <li><a href="plot.htm?f(x),%20f(a)+f%27(a)*(x-a);%20a:=1,%20f(x):=sin(x)"
-  >A tangent to a function</a>.
+  >A tangent of a function</a>.
 <li><a href="plot.htm?int(0,x,t.sin(t)/t)"
   >An antiderivative</a>.
 <li><a href="plot.htm?int(0,10,t.t%5e(x-1)*e%5e(-t))"
@@ -57,12 +58,10 @@
   >A family of interpolation polynomials</a>.
 <li><a href="plot.htm?f(x);%20f(x):=x%5e2;;calc(%22table(f,0:4:0.5)%22)"
   >Table for a function</a>.
-<li><a href="plot.htm?y=x%5ea;%20slider(%22a%22,0,2)"
+<li><a href="plot.htm?y=x%5ea;%20slider(a,0,2)"
   >Slider for one parameter</a>.
-<li><a href="plot.htm?y=a*sin(b*x);%20slider(%22a%22,1,4);%20slider(%22b%22,1,4)"
+<li><a href="plot.htm?y=a*sin(b*x);%20slider(a,1,4);%20slider(b,1,4)"
   >Sliders for two parameters</a>.
-<li><a href="plot-dark.htm?sin(x)"
-  >Dark mode</a>.
 </ul>
 
 <br>
@@ -85,6 +84,8 @@
   >The unit circle</a>.
 <li><a href="plot.htm?%5bcos(t),sin(2t)/2%5d;;scale(0.5)"
   >The lemniscate of Gerono</a>.
+<li><a href="plot.htm?%5bt*cos(pi*t),t*sin(pi*t)%5d;%20t0:=0,t1:=4"
+  >A spiral</a>.
 <li><a href="plot.htm?%5bint(0,t,t.cos(t%5e2)),int(0,t,t.sin(t%5e2))%5d;t0:=-10,t1:=10;;scale(0.2)"
   >An Euler spiral</a>.
 <li><a href="plot-bivariate.htm?%5bcos(t),sin(t),t%5d;;scale(0.5)"
@@ -151,6 +152,22 @@
   >Slope field of a first order ODE</a>.
 <li><a href="plot.htm?f(x);%20f:=iter(y.pli(x.1+int(0,x,t.y(t)),-10,10,0.1),40,t.1)"
   >A Picard iteration</a>.
+<li><a href="plot.htm?f(x)%5b0%5d;%20f(x):=expm(x*A)*%5b1,0%5d;%20A:=%5b%5b0,1%5d,%5b-1,0%5d%5d"
+  >Solving a system by matrix exponential</a>.
+<li><a href="plot.htm?u(x),v(x);%20%5bu,v%5d%27=%5bv,-u%5d;%20p:=%5b0,1,0%5d"
+  >An autonomous system of two ODE</a>.
+<li><a href="plot.htm?u(x),v(x);%20%5bu,v%5d%27=%5bv,u*x%5d;%20p:=%5b0,1,0%5d"
+  >A non-autonomous system of two ODE</a>.
+<li><a href="plot.htm?x(t);%20x%27%27=-x/%7cx%7c%5e3;%20p:=%5b0,%5b4,0%5d,%5b0,0.2%5d%5d;%20t1:=20;%20tw:=20"
+  >The one body problem</a>.
+  <a href="plot.htm?points(x,0:20:0.5);%20x%27%27=-x/%7cx%7c%5e3;%20p:=%5b0,%5b4,0%5d,%5b0,0.2%5d%5d;%20t1:=20;%20tw:=20"
+  >Stroboskopic view</a>.
+<li><a href="plot.htm?%5bx(t),y(t)%5d;%20%5bx,y,vx,vy%5d%27=%5bvx,vy,-x/%7c%5bx,y%5d%7c%5e3,-y/%7c%5bx,y%5d%7c%5e3%5d;%20p:=%5b0,4,0,0,0.2%5d;%20t1:=20;%20tw:=20"
+  >The one body problem as a first order system</a>.
+<li><a href="plot.htm?x(t),1/%7c%5bx,y%5d%7c;%20x%27%27=x/%7cx%7c%5e3;%20p:=%5b0,%5b-10,1%5d,%5b2,0%5d%5d;%20t1:=20;%20tw:=20"
+  >Scattering at a Coulomb potential</a>.
+<li><a href="plot.htm?%5bx(t),z(t)%5d;%20%5bx,y,z%5d%27=%5b10(y-x),x*(28-z)-y,x*y-8/3*z%5d;%20p:=%5b0,1,0,20%5d;%20t1:=40;%20tw:=40;;scale(5),P(0,20)"
+  >The Lorenz attractor</a>. Projection on the xz plane.
 </ul>
 
 <br>
@@ -170,9 +187,9 @@
   >A bivariate function with a level curve</a>.
 <li><a href="plot-bivariate.htm?f(x,y),f(x,y)=c%20for%20c%20in%20-4:8;f(x,y):=x*sin(y)+y*cos(x);;scale(0.5)"
   >A bivariate function with many level curves</a>.
-<li><a href="plot-bivariate.htm?4exp((-x%5e2-y%5e2)/a);%20slider(%22a%22,1,10);;scale(0.5)"
+<li><a href="plot-bivariate.htm?4exp((-x%5e2-y%5e2)/a);%20slider(a,1,10);;scale(0.5)"
   >Slider for one parameter</a>.
-<li><a href="plot-bivariate.htm?4exp(-abs(x/a)%5eb-abs(y/a)%5eb);%20slider(%22a%22,1,10),slider(%22b%22,1,4);;scale(0.5)"
+<li><a href="plot-bivariate.htm?4exp(-abs(x/a)%5eb-abs(y/a)%5eb);%20slider(a,1,10),slider(b,1,4);;scale(0.5)"
   >Sliders for two parameters</a>.
 </ul>
 
@@ -198,9 +215,9 @@
   >A hyperboloid</a>.
 <li><a href="plot-implicit.htm?(x%5e2+y%5e2+z%5e2+R%5e2-r%5e2)%5e2=4R%5e2*(x%5e2+y%5e2);%20R:=4,r:=2,w(14);;scale(0.5)"
   >A torus</a>.
-<li><a href="plot-implicit.htm?x%5e2+y%5e2+x*z%5e2=r%5e2;%20slider(%22r%22,0,4);;scale(0.5)"
+<li><a href="plot-implicit.htm?x%5e2+y%5e2+x*z%5e2=r%5e2;%20slider(r,0,4);;scale(0.5)"
   >Slider for one parameter</a>.
-<li><a href="plot-implicit.htm?x%5e2+y%5e2+x*abs(z)%5ea=r%5e2;%20slider(%22r%22,0,4),slider(%22a%22,1,4);;scale(0.5)"
+<li><a href="plot-implicit.htm?x%5e2+y%5e2+x*abs(z)%5ea=r%5e2;%20slider(r,0,4),slider(a,1,4);;scale(0.5)"
   >Sliders for two parameters</a>.
 </ul>
 

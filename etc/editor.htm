@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Editor</title>
+  <link id="style" href="css/ui.css" rel="stylesheet">
+  <script src="js/main.js"></script>
+</head>
+<body>
+
+<a class="box" target="_blank" rel="noopener noreferrer" href="doc.htm">Help</a>
+<a class="box" target="_blank" rel="noopener noreferrer" href="symbols.htm">Symbols</a>
+<button onclick="button_formula()">Formula</button>
+<button onclick="button_neg()">&not;</button>
+<button onclick="button_and()">&and;</button>
+<button onclick="button_or()">&or;</button>
+<button onclick="button_implies()">&rArr;</button>
+<button onclick="button_iff()">&hArr;</button>
+<button onclick="button_forall()">&forall;</button>
+<button onclick="button_exists()">&exist;</button>
+<button onclick="button_matrix22()">(2,2)</button>
+<button onclick="button_matrix21()">(2,1)</button>
+<button onclick="button_matrix33()">(3,3)</button>
+<button onclick="button_matrix31()">(3,1)</button>
+
+<br>
+<button onclick="button_pi()">&pi;</button>
+<button onclick="button_delta()">&Delta;</button>
+<button onclick="button_equiv()">&equiv;</button>
+<button onclick="button_approx()">&approx;</button>
+<button onclick="button_ne()">&ne;</button>
+<button onclick="button_le()">&le;</button>
+<button onclick="button_ge()">&ge;</button>
+<button onclick="button_in()">&in;</button>
+<button onclick="button_notin()">&notin;</button>
+<button onclick="button_sub()">&sub;</button>
+<button onclick="button_sube()">&sube;</button>
+<button onclick="button_cup()">&cup;</button>
+<button onclick="button_cap()">&cap;</button>
+<button onclick="button_set()">{|}</button>
+<button onclick="button_times()">&times;</button>
+<button onclick="button_sqrt()">&radic;</button>
+<button onclick="button_pm()">&plusmn;</button>
+<button onclick="button_mp()">∓</button>
+<br>
+<button onclick="button_preview()">Preview</button>
+<button onclick="button_export()">Export</button>
+
+<button onclick="button_braces()">{}</button>
+<button onclick="button_angles()">&lang;&rang;</button>
+<button onclick="button_brackets()">[]</button>
+<button onclick="button_parens()">()</button>
+<button onclick="button_frac()">a/b</button>
+<button onclick="button_diff()">d/dx</button>
+<button onclick="button_pdiff()">&part;/&part;x</button>
+<button onclick="button_lim()">lim</button>
+<button onclick="button_sum()">&sum;</button>
+<button onclick="button_int()">&int; f(x) dx</button>
+<button onclick="button_fn()">f: A&rarr;B</button>
+
+<div class="container">
+<div class="left">
+<textarea id="input" rows="26" cols="64"
+  onkeyup="input_mod()" onmouseup="input_mod()"
+  spellcheck="false"
+></textarea>
+</div>
+<div class="right">
+<div id="output">
+</div>
+</div>
+
+</body>
+</html>
+

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>CAS manual</title>
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<table class="navigation">
+<tr>
+<td><a href="index.html">Home</a>
+<td><a href="cas.htm">New</a>
+</table>
+
+<h2>CAS manual</h2>
+
+<h3 id="commands">Commands</h3>
+<table class="bt">
+<tr>
+<th>Command
+<th>Explanation
+<tr>
+<td><code>expand(t)</code>
+<td>Expands the expression <code>t</code>. For example expansion of a product.
+<tr>
+<td><code>simp(t)</code>
+<td>Simplifies the expression <code>t</code>.
+  Under normal circumstances, this command is applied automatically.
+<tr>
+<td><code>subs(v=a,t)</code>
+<td>In the expression <code>t</code>, substitute the variable
+  <code>v</code> by the value <code>a</code>.
+<tr>
+<td><code>subs(t,v=a)</code>
+<td>Substitution, alternative notation.
+<tr>
+<td><code>hold(t)</code>
+<td>Holds the evaluation of commands.
+<tr>
+<td><code>eval(t)</code>
+<td>Forces evaluation of commands under <code>hold</code>.
+<tr>
+<td><code>plain(t)</code>
+<td>Prints the expression <code>t</code> as plain text,
+  and thus allows the output to be used as new input.
+</table>
+
+<h3 id="Analysis">Analysis</h3>
+<table class="bt">
+<tr>
+<th>Funktion
+<th>Erklärung
+<tr>
+<td><code>sum(k=a,b,f(k))</code>
+<td>The sum from <code>k=a</code> to <code>b</code> over <code>f(k)</code>.
+<tr>
+<td><code>diff(t,v)</code>
+<td>The derivative of <code>t</code> with respect to the variable <code>v</code>.
+<tr>
+<td><code>diff(t,v,n)</code>
+<td>The <code>n</code>th derivative of <code>t</code> with respect
+  to <code>v</code>.
+<tr>
+<td><code>taylor(f(x),x,a,n)</code>
+<td>The <code>n</code>th partial sum of the Taylor series of <code>f</code>
+  at <code>a</code>.
+</table>
+
+<h3 id="Logic">Logic</h3>
+<table class="bt">
+<tr>
+<th>Constant
+<th>Explanation
+<tr>
+<td><code>0</code>
+<td>Logically false.
+<tr>
+<td><code>1</code>
+<td>Logically true.
+</table>
+<br>
+
+<table class="bt">
+<tr>
+<th>Function
+<th>Explanation
+<tr>
+<td><code>not A</code>
+<td>Logical negation.
+<tr>
+<td><code>A and B</code>
+<td>Logical conjunction.
+<tr>
+<td><code>A or B</code>
+<td>Logical disjunction.
+<tr>
+<td><code>A=&gt;B</code>
+<td>Logical implication.
+<tr>
+<td><code>A&lt;=&gt;B</code>
+<td>Logical equivalence.
+<tr>
+<td><code>taut(t)</code>
+<td>Returns true, if the propositional formula <code>t</code> is tautological.
+<tr>
+<td><code>sat(t)</code>
+<td>Returns true, if the propositional formula <code>t</code> is satisfiable.
+</table>
+
+</body>
+</html>
+

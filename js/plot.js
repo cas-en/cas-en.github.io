@@ -13,11 +13,14 @@ var hud_display = false;
 var GAMMA = 0.57721566490153286;
 var PHI = 1.618033988749895;
 var dark = false;
-var ftab_extension_loaded = false;
 var async_continuation = undefined;
+var extension_loaded = {};
+var extension_table = {};
 var recursion_table = {};
 var post_app_stack = [];
 var freq = 1;
+var sys_mode = 2;
+var sys_xyz = {};
 
 var color_bg = [255,255,255,255];
 var color_axes = [160,160,160];
@@ -25,7 +28,7 @@ var color_grid = [228,228,228];
 
 var color_dark_bg = [0,0,0,255];
 var color_dark_axes = [40,40,40];
-var color_dark_grid = [10,10,10];
+var color_dark_grid = [14,14,14];
 
 var color_table = [
     [0,0,140,255],
@@ -55,6 +58,7 @@ var ftab = {
     hypot: Math.hypot, floor: Math.floor, ceil: Math.ceil,
     div: div, mod: mod, diveuc: diveuc, modeuc: modeuc,
     divtrunc: divtrunc, modtrunc: modtrunc,
+    rect: rectangle, tri: triangle,
     rd: Math.round, trunc: Math.trunc, frac: frac,
     sqrt: Math.sqrt, cbrt: cbrt, rt: root, root: root,
     exp: Math.exp, expm1: Math.expm1,
@@ -73,19 +77,23 @@ var ftab = {
     Gamma: Gamma, erf: erf, erfc: erfc,
     En: En, Ei: Ei, li: li, Li: Li,
     diff: diff, int: integral, D: diff_operator, int16: int16,
-    iter: pow, sum: sum, prod: prod, af: af,
+    iter: iterate, sum: sum, prod: prod, af: af,
     rand: rand, rng: rand, tg: tg, sc: sc, res: res,
     range: range, inv: invab, agm: agm,
     E: eiE, K: eiK, F: eiF, Pi: eiPi,
     RF: RF, RC: RC, RJ: RJ, RD: RD,
     P: set_position, scale: set_scale,
     zeroes: zeroes, roots: zeroes,
-    map: map, filter: filter, freq: set_freq,
-    img: plot_img, calc: calc_cmd, len: list_length, not: not,
+    map: map, filter: filter, freq: set_freq, not: not,
+    img: plot_img, calc: calc_cmd, len: list_length, cat: list_cat,
     _addtt_: add_tensor_tensor, _subtt_: sub_tensor_tensor,
     _mulst_: mul_scalar_tensor, _mulmv_: mul_matrix_vector,
     _mulmm_: mul_matrix_matrix, _mulvv_: scalar_product,
-    _vabs_: abs_vec
+    _vabs_: abs_vec, _negt_: neg_tensor, sys: sys
+};
+
+var cmd_tab = {
+    "=": 0, slider: 0, Regler: 0, ani: 0
 };
 
 var keyword_table = {
@@ -101,7 +109,7 @@ var lang = {
     expected_right_paren: "expected ')'.",
     expected_right_sq: "expected ']'.",
     expected_operand: "expected an operand.",
-    expected_comman_or_bracket: function(i,bracket){
+    expected_comma_or_bracket: function(i,bracket){
         syntax_error(i,"expected ',' or '"+bracket+"'.");
     },
     unexpected_symbol: function(i,x){
@@ -145,14 +153,14 @@ function load_async(URL,callback){
    head.appendChild(s);
 }
 
-function load_ftab_extension(ftab,path){
+function load_extension(table,id,path){
     load_async(path,async function(){
-        var t = ftab_extension;
+        var t = extension_table[id];
         var a = Object.keys(t);
         for(var i=0; i<a.length; i++){
-            ftab[a[i]] = t[a[i]];
+            table[a[i]] = t[a[i]];
         }
-        ftab_extension_loaded = true;
+        extension_loaded[id] = true;
         while(async_continuation == "await"){
             await sleep(100);
         }
@@ -161,6 +169,7 @@ function load_ftab_extension(ftab,path){
 }
 
 function list_length(a){return a.length;}
+function list_cat(a,b){return a.concat(b);}
 function not(a){return 1-a;}
 
 function rand(a,b){
@@ -206,7 +215,20 @@ function res(f,x,a,b){return a<=x && x<=b? f(x): NaN;}
 function map(f,a){return a.map(function(x){return f(x);});}
 function filter(f,a){return a.filter(f);}
 
+function list_sum(a){
+    var y = 0;
+    for(var i=0; i<a.length; i++){y+=a[i];}
+    return y;
+}
+
+function list_prod(a){
+    var y = 1;
+    for(var i=0; i<a.length; i++){y*=a[i];}
+    return y;
+}
+
 function sum(a,b,f){
+    if(b==undefined){return list_sum(a);}
     a = Math.round(a);
     b = Math.round(b);
     var y = 0;
@@ -217,6 +239,7 @@ function sum(a,b,f){
 }
 
 function prod(a,b,f){
+    if(b==undefined){return list_prod(a);}
     a = Math.round(a);
     b = Math.round(b);
     var y = 1;
@@ -392,7 +415,7 @@ function int16(a,b,f,n){
     return gauss16(f,a,b,n);
 }
 
-function pow(f,n,x){
+function iterate(f,n,x){
     for(var i=0; i<n; i++){
         x = f(x);
     }
@@ -472,15 +495,30 @@ function angle(x,y){
     return Math.atan2(y,x);
 }
 
+function rectangle(x){
+    return Math.abs(x)<0.5?1:0;
+}
+
+function triangle(x){
+    return Math.abs(x)<1?1-Math.abs(x):0;
+}
+
 function tanh(x){
     if(x>24) return 1;
     if(x<-24) return -1;
     return 1-2/(Math.exp(2*x)+1);
 }
 
+function log(x,b){
+    if(b==undefined){
+        return Math.log(x);
+    }else{
+        return Math.log(x)/Math.log(b);
+    }
+}
+
 function lg(x){return 0.43429448190325176*Math.log(x);}
 function ld(x){return 1.4426950408889634*Math.log(x);}
-function log(x,b){return Math.log(x)/Math.log(b);}
 function cot(x){return 1/Math.tan(x);}
 function sec(x){return 1/Math.cos(x);}
 function csc(x){return 1/Math.sin(x);}
@@ -505,6 +543,8 @@ function sinc(x){
 }
 
 function invab(f,x,a,b){
+    if(a==undefined) a = -100;
+    if(b==undefined) b = 100;
     var m,s,a1,b1,d;
     a1=a; b1=b;
     s = Math.sign(f(b)-f(a));
@@ -721,10 +761,6 @@ function erfc(x){
     return 1-erf(x);
 }
 
-function norm(x){
-    return 0.5+0.5*erf(x/Math.SQRT2);
-}
-
 function En(n,x){
     return Math.pow(x,n-1)*iGamma(1-n,x);
 }
@@ -808,10 +844,14 @@ function isspace(s){
     return s==' ' || s=='\t' || s=='\n';
 }
 
-function str(x,ftos){
+function str(x,ftos,newline){
     if(Array.isArray(x)){
         var f = function(t){return str(t);};
-        return "["+x.map(f).join(", ")+"]";
+        if(newline && x.length>0 && Array.isArray(x[0])){
+            return "<br>["+x.map(f).join(",<br>&nbsp;")+"]";
+        }else{
+            return "["+x.map(f).join(", ")+"]";
+        }
     }else if(x instanceof Function){
         return lang.a_function;
     }else if(typeof x == "string"){
@@ -965,23 +1005,6 @@ function scan(s){
     return a;
 }
 
-function lambda_expression(i){
-    i.index++;
-    var argv = [];
-    while(1){
-        argv.push(atom(i));
-        var t = i.a[i.index];
-        if(t[0]==Symbol && t[1]=='|'){
-            i.index++;
-            break;
-        }else if(t[0]==Symbol && t[1]==','){
-            i.index++;
-        }
-    }
-    var x = expression(i);
-    return ["fn",argv,x];
-}
-
 function atom(i){
     var t = i.a[i.index];
     if(t[0] == SymbolNumber){
@@ -1005,7 +1028,13 @@ function atom(i){
         var a = ["[]"];
         return application_list(i,a,']');
     }else if(t[0] == Symbol && t[1]=='|'){
-        return lambda_expression(i);
+        i.index++;
+        var x = conjunction(i);
+        t = i.a[i.index];
+        if(t[0]==Symbol && t[1]=='|'){
+            i.index++;
+        }
+        return ["abs",x];
     }else if(t[0] == SymbolString){
         i.index++;
         return ["_string_",t[1]];
@@ -1071,7 +1100,9 @@ function application(i){
             }
             var t = i.a[i.index];
             if(t[0]==Symbol && t[1]=='('){
-                var y = atom(i);
+                i.index++;
+                var y = application_list(i,["[]"],')');
+                if(y.length==2){y = y[1];}
                 if(count==1){
                     x = ["diff",x,y];
                 }else{
@@ -1319,8 +1350,9 @@ function abs_vec(v){
 }
 
 function scalar_product(v,w){
+    var n = Math.min(v.length,w.length);
     var y = 0;
-    for(var i=0; i<v.length; i++){
+    for(var i=0; i<n; i++){
         y+=v[i]*w[i];
     }
     return y;
@@ -1338,12 +1370,17 @@ function mul_scalar_tensor(r,a){
     return b;
 }
 
+function neg_tensor(a){
+    return mul_scalar_tensor(-1,a);
+}
+
 function mul_matrix_vector(A,v){
     var m = A.length;
-    var n = v.length;
+    var nv = v.length;
     var w = [];
     for(var i=0; i<m; i++){
         var y = 0;
+        var n = Math.min(nv,A[i].length);
         for(var j=0; j<n; j++){y+=A[i][j]*v[j];}
         w.push(y);
     }
@@ -1395,50 +1432,54 @@ var TypeNumber = 0;
 var TypeVector = 1;
 var TypeMatrix = 2;
 var type_op_table = {
-    "[]":0, "+":0, "-":0, "*":0, "/":0, "^":0, "abs":0
+    "[]":0, "+":0, "-":0, "*":0, "/":0, "^":0, "~":0,
+    "abs":0, "index":0, "fn":0, "diff":0
 };
-var fn_type_table = {
-    "unit": TypeVector,
-    "nabla": TypeVector,
-    "rot": TypeMatrix,
-    "I": TypeMatrix,
-    "diag": TypeMatrix
+
+var id_type_table = {
+    "unit": [TypeVector],
+    "nabla": [TypeVector],
+    "rot": [TypeMatrix],
+    "I": [TypeMatrix],
+    "diag": [TypeMatrix],
+    "tp": [TypeMatrix],
+    "expm": [TypeMatrix],
+    "jacobi": [TypeMatrix]
 };
-var id_type_table = {};
 
 function infer_type(t){
     if(Array.isArray(t)){
         var T = t.map(infer_type);
         if(type_op_table.hasOwnProperty(t[0])){
             if(t[0]==="[]"){
-                if(T.length>1 && T[1]==TypeVector){
+                if(T.length>1 && T[1]===TypeVector){
                     return TypeMatrix;
                 }else{
                     return TypeVector;
                 }
             }else if(t[0]==="+"){
-                if(T[1]!=TypeNumber){
+                if(T[1]===TypeVector || T[1]===TypeMatrix){
                     t[0] = "_addtt_";
                     return T[1];
                 }
             }else if(t[0]==="-"){
-                if(T[1]!=TypeNumber){
+                if(T[1]===TypeVector || T[1]===TypeMatrix){
                     t[0] = "_subtt_";
                     return T[1];
                 }
             }else if(t[0]==="*"){
-                if(T[2]==TypeVector){
-                    if(T[1]==TypeMatrix){
+                if(T[2]===TypeVector){
+                    if(T[1]===TypeMatrix){
                         t[0] = "_mulmv_";
                         return TypeVector;
-                    }else if(T[1]==TypeVector){
+                    }else if(T[1]===TypeVector){
                         t[0] = "_mulvv_";
                     }else{
                         t[0] = "_mulst_";
                         return TypeVector;
                     }
-                }else if(T[2]==TypeMatrix){
-                    if(T[1]==TypeMatrix){
+                }else if(T[2]===TypeMatrix){
+                    if(T[1]===TypeMatrix){
                         t[0] = "_mulmm_";
                         return TypeMatrix;
                     }else{
@@ -1447,25 +1488,49 @@ function infer_type(t){
                     }
                 }
             }else if(t[0]==="/"){
-                if(T[1]!=TypeNumber){
-                    t[0] = "_mulsv_";
+                if(T[1]===TypeVector || T[1]===TypeMatrix){
+                    t[0] = "_mulst_";
                     var v = t[1];
                     t[1] = ["/",1,t[2]];
                     t[2] = v;
                     return T[1];
                 }
             }else if(t[0]==="^"){
-                if(T[1]==TypeMatrix){
+                if(T[1]===TypeMatrix){
                     t[0] = "_matrix_pow_";
                     return TypeMatrix;
                 }
+            }else if(t[0]==="~"){
+                if(T[1]===TypeVector || T[1]===TypeMatrix){
+                    t[0] = "_negt_";
+                    return T[1];
+                }
             }else if(t[0]==="abs"){
-                if(T[1]==TypeVector){
+                if(T[1]===TypeVector){
                     t[0] = "_vabs_";
                 }
+            }else if(t[0]==="index"){
+                if(T[1]===TypeMatrix){
+                    return TypeVector;
+                }
+            }else if(t[0]==="fn"){
+                return [T[2]];
+            }else if(t[0]==="diff"){
+                if(Array.isArray(T[1]) && T[1][0]===TypeVector){
+                    if(T[2]===TypeVector){
+                        t[0] = "jacobi";
+                        return TypeMatrix;
+                    }else{
+                        t[0] = "_vdiff_";
+                        return TypeVector;
+                    }
+                }else if(T[2]===TypeVector){
+                    t[0] = "nabla";
+                    return TypeVector;
+                }
             }
-        }else if(fn_type_table.hasOwnProperty(t[0])){
-            return fn_type_table[t[0]];
+        }else if(Array.isArray(T[0])){
+            return T[0][0];
         }
     }else if(typeof t=="string"){
         if(id_type_table.hasOwnProperty(t)){
@@ -1567,9 +1632,9 @@ function compile_expression(a,t,context,type){
             context.pre.push("var "+t+"=ftab[\""+t+"\"];");
             context.local[t] = true;
             a.push(t);
-        }else if(!ftab_extension_loaded){
+        }else if(!extension_loaded.ftab){
             async_continuation = "await";
-            load_ftab_extension(ftab,"js/ftab-extension.js");
+            load_extension(ftab,"ftab","js/ext-ftab.js");
             throw new Repeat();
         }else{
             throw lang.undefined_variable(t);
@@ -1881,7 +1946,10 @@ function init(canvas,w,h){
     gx.color = [0,0,0,255];
 
     /* gx.mx = 36; */
-    if(w<600){
+    var grid = ftab["grid"];
+    if(grid!=undefined){
+        gx.mx = 50*grid;
+    }else if(w<600){
         gx.mx = w/1300*110;
     }else if(w<800){
         gx.mx = w/1300*72.5;
@@ -1903,9 +1971,11 @@ function get_value(id){
     return document.getElementById(id).value;
 }
 
-function system(gx,grid,alpha,alpha_axes){
-    var px0 = gx.px0;
-    var py0 = gx.py0;
+function system(gx,alpha,alpha_axes){
+    if(sys_mode==0) return;
+    var grid = sys_mode>1;
+    var px0 = Math.round(gx.px0); // On Chrome, touch clientX
+    var py0 = Math.round(gx.py0); // returns also fractional part.
     var xcount = Math.ceil(0.5*gx.w/gx.mx)+1;
     var ycount = Math.ceil(0.5*gx.h/gx.mx)+1;
     var xshift = Math.round((0.5*gx.w-px0)/gx.mx);
@@ -1936,7 +2006,7 @@ function system(gx,grid,alpha,alpha_axes){
 
 function clear_system(gx){
     clear(gx,gx.color_bg);
-    system(gx,true);
+    system(gx);
 }
 
 function clamp(x,a,b){
@@ -1978,26 +2048,32 @@ function ftos_strip(x,m){
 }
 
 function labels(gx){
+    if(sys_mode==0) return;
     var context = gx.context;
     var w = gx.w;
     var h = gx.h;
-    var px0 = gx.px0;
-    var py0 = gx.py0;
-    var ycount = Math.ceil(0.5*gx.h/gx.mx);
-    var xcount = Math.ceil(0.5*gx.w/gx.mx);
-    var xshift = Math.round((0.5*gx.w-px0)/gx.mx);
-    var yshift = Math.round((0.5*gx.h-py0)/gx.mx);
+    var mx = gx.mx;
+    var px0 = Math.round(gx.px0);
+    var py0 = Math.round(gx.py0);
+    var xcount = Math.ceil(0.5*w/mx);
+    var ycount = Math.ceil(0.5*h/mx);
+    var xshift = Math.round((0.5*w-px0)/mx);
+    var yshift = Math.round((0.5*h-py0)/mx);
     var px,py,s,px_adjust,py_adjust;
     context.fillStyle = gx.font_color;
     context.textAlign = "center";
 
-
     var bulky_pred = false;
     var char_max = gx.char_max;
     var bulky2 = false;
+
+    var xmargin = 26;
+    var ymargin = 12;
+
     for(var x=xshift-xcount; x<=xshift+xcount; x++){
         if(x!=0){
-            px = px0+Math.floor(gx.mx*x);
+            px = px0+Math.floor(mx*x);
+            if(px<xmargin || px>w-xmargin) continue;
             s = strip_zeroes(ftos(x/ax,ax,1));
             if(s.length>9) bulky2 = true;
             if(bulky2){
@@ -2019,7 +2095,8 @@ function labels(gx){
     context.textAlign = "right";
     for(var y=yshift-ycount; y<=yshift+ycount; y++){
         if(y!=0){
-            py = py0+Math.floor(gx.mx*y);
+            py = py0+Math.floor(mx*y);
+            if(py<ymargin || py>h-ymargin) continue;
             s = ftos(-y/ay,ay/4,1);
             if(ay<2){s=strip_zeroes(s);}
             context.fillText(s,clamp(px0-10,28+10*(s.length-2),w-16),py+6);
@@ -2064,6 +2141,10 @@ function refresh(gx){
     labels(gx);
 }
 
+function move_refresh(gx){
+    refresh(gx);
+}
+
 function mouse_move_handler(e){
     if(e.buttons==1){
         moved = true;
@@ -2076,7 +2157,7 @@ function mouse_move_handler(e){
         gx.pos = get_pos(gx);
         clientXp = e.clientX;
         clientYp = e.clientY;
-        refresh(gx);
+        move_refresh(gx);
     }else{
         clientXp = e.clientX;
         clientYp = e.clientY;
@@ -2084,6 +2165,38 @@ function mouse_move_handler(e){
 }
 
 function mouse_up_handler(e){
+    if(moved){
+        update(graphics);
+        moved = false;
+    }
+}
+
+function touch_move(e){
+    if(e.touches.length!=0){
+        e = e.touches[0];
+        moved = true;
+        var gx = graphics;
+        pid_stack = [];
+        var dx = e.clientX-clientXp;
+        var dy = e.clientY-clientYp;
+        gx.px0 = gx.px0+dx;
+        gx.py0 = gx.py0+dy;
+        gx.pos = get_pos(gx);
+        clientXp = e.clientX;
+        clientYp = e.clientY;
+        move_refresh(gx);
+    }
+}
+
+function touch_start(e){
+    if(e.touches.length!=0){
+        e = e.touches[0];
+        clientXp = e.clientX;
+        clientYp = e.clientY;
+    }
+}
+
+function touch_end(){
     if(moved){
         update(graphics);
         moved = false;
@@ -2105,9 +2218,11 @@ function new_system(last_gx){
     }else{
         canvas.addEventListener("mousemove", mouse_move_handler, false);
         canvas.addEventListener("mouseup", mouse_up_handler, false);
+        canvas.addEventListener("touchstart", touch_start, false);
+        canvas.addEventListener("touchend", touch_end, false);
+        canvas.addEventListener("touchmove", touch_move, false);
     }
-    clear_system(gx);
-    flush(gx);
+    refresh(gx);
 
     return gx;
 }
@@ -2126,13 +2241,19 @@ async function fplot(gx,f,d,cond,color){
     pid_stack.push(pid);
     busy = true;
     var spoint = gx.spoint;
-    var wx = 0.5*gx.w/gx.mx/ax;
-    var x0 = (0.5*gx.w-gx.px0)/gx.mx/ax;
+    var wx = 0.5*gx.w/(gx.mx*ax);
+    var wy = 0.5*(gx.h+4)/(gx.mx*ay);
+    var x0 = (0.5*gx.w-gx.px0)/(gx.mx*ax);
+    var y0 = (gx.py0-0.5*gx.h)/(gx.mx*ay);
+    var ya = y0-wy;
+    var yb = y0+wy;
     var k=0;
     d = d/ax;
     for(var x=x0-wx; x<x0+wx; x+=d){
         var y = f(x);
-        spoint(color,ax*x,ay*y);
+        if(ya<y && y<yb){
+            spoint(color,ax*x,ay*y);
+        }
         if(cond && k==4000){
             k=0;
             await sleep(10);
@@ -2377,7 +2498,8 @@ function plot_level_async(gx,f,color){
         return r-1-Math.floor(r-0.5);
     };
     plot_level(gx,f,1,false);
-    plot_zero_set_async(gx,g,color);
+    labels(gx);
+    // plot_zero_set_async(gx,g,color);
 }
 
 function bisection_bool(state,f,a,b){
@@ -2514,7 +2636,11 @@ function ode_as_fn_rec(v,t){
 
 function ode_as_fn(t,v,order){
     var u = ode_as_fn_rec(v,t[2]);
-    return compile(u,["x","y"]);
+    if(!ftab.hasOwnProperty("t") && contains_variable(t[2],"t")){
+        return compile(u,["t","y"]);
+    }else{
+        return compile(u,["x","y"]);
+    }
 }
 
 function from_ode(gx,t){
@@ -2533,7 +2659,6 @@ function from_ode(gx,t){
     var wm = Math.abs(p[0]+gx.px0/gx.mx/ax);
     var wp = Math.abs(p[0]-(gx.w-gx.px0)/gx.mx/ax);
     var fv = runge_kutta(f,0.001,wm,wp,p[0],p.slice(1));
-    if(v!=="y") ftab[v]=fv;
     return fv;
 }
 
@@ -2554,10 +2679,11 @@ function points(gx,color,f,a){
     labels(gx);
 }
 
-function points_list(gx,color,a){
+function points_list(gx,color,a,r){
+    if(r==undefined) r=4;
     for(var i=0; i<a.length; i++){
         var t = a[i];
-        gx.circle(color,t[0],t[1],4,true);
+        gx.circle(color,t[0],t[1],r,true);
     }
     flush(gx);
     labels(gx);
@@ -2565,10 +2691,21 @@ function points_list(gx,color,a){
 
 function contains_variable(t,v){
     if(Array.isArray(t)){
-        for(var i=0; i<t.length; i++){
-            if(contains_variable(t[i],v)) return true;
+        if(t[0]==="fn"){
+            if(Array.isArray(t[1])){
+                for(var i=0; i<t[1].length; i++){
+                    if(t[1][i]===v) return false;
+                }
+            }else if(t[1]===v){
+                return false;
+            }
+            return contains_variable(t[2],v);
+        }else{
+            for(var i=0; i<t.length; i++){
+                if(contains_variable(t[i],v)) return true;
+            }
+            return false;
         }
-        return false;
     }else{
         return t===v;
     }
@@ -2624,7 +2761,9 @@ function plot_node_basic(gx,t,color){
         }
     }else if(Array.isArray(t) && t[0]==="="){
         if(Array.isArray(t[1]) && t[1][0]==="D"){
+            var v = t[1][1];
             f = from_ode(gx,t);
+            if(v!=="y") ftab[v] = f;
             plot_async(gx,f,color);
         }else if(t[1]==="y" && !contains_variable(t[2],"y")){
             infer_type(t);
@@ -2640,17 +2779,20 @@ function plot_node_basic(gx,t,color){
         infer_type(t);
         f = compile(t,["x","y"]);
         plot_bool(gx,f,color,1);
-    }else if(contains_variable(t,"y")){
-        infer_type(t);
-        f = compile(t,["x","y"]);
-        plot_level_async(gx,f,color);
     }else{
         var T = infer_type(t);
-        if(T==TypeVector){
+        if(T===TypeVector){
             f = compile(t,["t"]);
             vplot_async(gx,f,color);
+        }else if(contains_variable(t,"y")){
+            f = compile(t,["x","y"]);
+            plot_level_async(gx,f,color);
         }else{
-            f = compile(t,["x"]);
+            if(!ftab.hasOwnProperty("t") && contains_variable(t,"t")){
+                f = compile(t,["t"]);
+            }else{
+                f = compile(t,["x"]);
+            }
             plot_async(gx,f,color);
         }
     }
@@ -2671,16 +2813,21 @@ function global_definition(t){
             }
             recursion_table[name][app[1]] = compile(t[2],[])();
         }else{
-            if(T!=TypeNumber) fn_type_table[name] = T;
+            if(T!==TypeNumber){id_type_table[name] = [T];}
             var value = compile(t[2],app.slice(1),"",name);
             ftab[name] = value;
         }
     }else{
         var T = infer_type(t[2]);
-        if(T!=TypeNumber) id_type_table[t[1]] = T;
+        if(T!==TypeNumber) id_type_table[t[1]] = T;
         var value = compile(t[2],[]);
         ftab[t[1]] = value();
     }
+}
+
+function eval_node(t){
+    var value = compile(t,[]);
+    value();
 }
 
 function eval_statements(t){
@@ -2691,9 +2838,18 @@ function eval_statements(t){
     }else{
         if(Array.isArray(t) && t[0]===":="){
             global_definition(t);
+        }else if(Array.isArray(t) && typeof t[0]=="string" &&
+            cmd_tab.hasOwnProperty(t[0])
+        ){
+            if(extension_loaded.cmd){
+                cmd_tab[t[0]](t);
+            }else{
+                async_continuation = "await";
+                load_extension(cmd_tab,"cmd","js/ext-cmd.js");
+                throw new Repeat();
+            }
         }else{
-            var value = compile(t,[]);
-            value();
+            eval_node(t);
         }
     }
 }
@@ -2718,19 +2874,16 @@ function plot(gx){
     process_statements(a);
     pid_stack = [];
 
-    clear_system(gx);
-    flush(gx);
-    labels(gx);
-
     if(a[0].length>0){
         var t = ast(a[0]);
         if(Array.isArray(t) && t[0]===";"){
-            for(var i=2; i<t.length; i++){
+            for(var i=t.length-1; i>=2; i--){
                 eval_statements(t[i]);
             }
             t = t[1];
-            if(t===null) return;
+            if(t===null){refresh(gx); return;}
         }
+        refresh(gx);
         if(Array.isArray(t) && t[0]==="block"){
             for(var i=1; i<t.length; i++){
                 if(Array.isArray(t[i]) && t[i][0]===":="){
@@ -2747,33 +2900,39 @@ function plot(gx){
                 plot_node(gx,t,color_table[0]);
             }
         }
+    }else{
+        refresh(gx);
     }
 }
 
-function calculate_eval(t){
+function calculate_eval(t,conf){
     if(Array.isArray(t) && t[0]===";"){
         var a = [];
         for(var i=2; i<t.length; i++){
-            var y = calculate_eval(t[i]);
+            var y = calculate_eval(t[i],conf);
             if(y!=undefined) a.push(y);
         }
-        return calculate_eval(t[1]);
+        return calculate_eval(t[1],conf);
     }else if(Array.isArray(t) && t[0]==="block"){
         var a = [];
         for(var i=1; i<t.length; i++){
-            var y = calculate_eval(t[i]);
+            var y = calculate_eval(t[i],conf);
             if(y!=undefined) a.push(y);
         }
         if(a.length>0) return a;
     }else if(Array.isArray(t) && t[0]===":="){
         global_definition(t);
     }else{
-        infer_type(t);
-        return compile(t,[])();
+        if(conf==="complex"){
+            return ccompile(t,[])();
+        }else{
+            infer_type(t);
+            return compile(t,[])();
+        }
     }
 }
 
-function calculate(compile){
+function calculate(conf){
     var input = get_value("input-calc");
     var out = document.getElementById("calc-out");
     if(input.length==0){
@@ -2782,13 +2941,13 @@ function calculate(compile){
     }
     try{
         var t = ast(input);
-        var value = calculate_eval(t);
+        var value = calculate_eval(t,conf);
         // out.innerHTML = "<p><code>"+str(t)+"</code>";
         // var t0 = performance.now();
         if(value==undefined){
             out.innerHTML = "";
         }else{
-            out.innerHTML = "<p><code>= "+str(value)+"</code>";
+            out.innerHTML = "<p><code>= "+str(value,undefined,true)+"</code>";
         }
         // var t1 = performance.now();
         // out.innerHTML += "<p><code>time: "+(t1-t0)+"ms</code>";
@@ -2804,7 +2963,7 @@ function calculate(compile){
 }
 
 function calc(){
-    calculate(compile);
+    calculate();
 }
 
 function get_pos(gx){
@@ -2890,6 +3049,10 @@ function yscale_dec(){
     update(graphics);
 }
 
+function sys(n){
+    sys_mode = n;
+}
+
 function switch_hud(){
     var hud = document.getElementById("hud");
     if(hud_display){
@@ -2942,7 +3105,7 @@ function query(href){
 
 var encode_tab = {
   " ": "20", "#": "23", "'": "27", "[": "5b", "]": "5d", "^": "5e",
-  "\"": "22", "<": "3c", ">": "3e", "|": "6c"
+  "\"": "22", "<": "3c", ">": "3e", "|": "7c"
 };
 
 function encode_query(s){
@@ -3039,7 +3202,6 @@ function process_post_applications(){
 window.onload = function(){
     var gx = new_system();
     graphics = gx;
-    labels(gx);
     query(window.location.href);
     main();
     update_on_resize();

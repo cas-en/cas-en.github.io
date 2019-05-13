@@ -7,29 +7,17 @@ cftab["N"] = {re:200,im:0};
 cftab["n"] = {re:1,im:0};
 cftab["ctab"] = [[1,1,1], [1,0.8,0], [0,0.2,0.6]];
 cftab["r"] = {re:10,im:0};
-ftab["sys"] = sys;
-var submit = submit_grid_on;
+ftab["debug"] = debug_mode;
+var debug = false;
 
-function submit_grid_off(gx){
-    system(gx,false,0.02,0.2);
-    flush(gx);
-    labels(gx);
+function debug_mode(){
+    debug = true;
 }
 
-function submit_grid_on(gx){
-    system(gx,true,0.02,0.2);
+function submit(gx){
+    system(gx,0.02,0.2);
     flush(gx);
     labels(gx);
-}
-
-function sys(n){
-    if(n==0){
-        submit = flush;
-    }else if(n==1){
-        submit = submit_grid_off;
-    }else{
-        submit = submit_grid_on;
-    }
 }
 
 function index_color(t,i){
@@ -148,8 +136,7 @@ function plot_fractal_leaf(px0,py0,px1,py1,calc_rect){
 
 function new_plot_fractal_rec(gx,f,n,pset,calc_rect,cond,pid,index,pid_stack){
     var m = 2*n;
-    // var color_inside = [0,100,200];
-    var color_inside = [0,0,0];
+    var color_inside = debug?[40,100,180]:[0,0,0];
     return async function plot_fractal_rec(px0,py0,W,H){
         var px1 = px0+W;
         var py1 = py0+H;
