@@ -19,6 +19,7 @@ var extension_table = {};
 var recursion_table = {};
 var post_app_stack = [];
 var freq = 1;
+var iso_mode = 0;
 var sys_mode = 2;
 var sys_xyz = {};
 
@@ -39,11 +40,11 @@ var color_table = [
 ];
 
 var color_table_dark = [
-    [220,180,20],
-    [140,0,100],
-    [0,120,120],
-    [60,140,0],
-    [140,40,40]
+    [220,180,20,255],
+    [140,0,100,255],
+    [0,120,120,255],
+    [60,140,0,255],
+    [140,40,40,255]
 ];
 
 var diff = diffh(0.001);
@@ -83,17 +84,21 @@ var ftab = {
     E: eiE, K: eiK, F: eiF, Pi: eiPi,
     RF: RF, RC: RC, RJ: RJ, RD: RD,
     P: set_position, scale: set_scale,
-    zeroes: zeroes, roots: zeroes,
+    zeros: zeros, zeroes: zeros, roots: zeros,
     map: map, filter: filter, freq: set_freq, not: not,
     img: plot_img, calc: calc_cmd, len: list_length, cat: list_cat,
     _addtt_: add_tensor_tensor, _subtt_: sub_tensor_tensor,
     _mulst_: mul_scalar_tensor, _mulmv_: mul_matrix_vector,
     _mulmm_: mul_matrix_matrix, _mulvv_: scalar_product,
-    _vabs_: abs_vec, _negt_: neg_tensor, sys: sys
+    _vabs_: abs_vec, _negt_: neg_tensor, sys: sys, iso: iso
 };
 
 var cmd_tab = {
-    "=": 0, slider: 0, Regler: 0, ani: 0
+    "=":0, slider:0, ani:0, vec:0, line:0, chain:0
+};
+
+var plot_cmd_tab = {
+    vec:0, line:0, chain:0
 };
 
 var keyword_table = {
@@ -559,41 +564,99 @@ function invab(f,x,a,b){
     return m;
 }
 
-function zeroes_push(a,x){
-    var n = a.length;
-    if(n==0 || Math.abs(a[n-1]-x)>1E-10){
-        a.push(x);
+function bisection(f,x,a,b){
+    var s = Math.sign(f(b)-f(a));
+    if(s==0 || isNaN(s)) s = 1;
+    for(var k=0; k<100; k++){
+        var m = 0.5*(a+b);
+        var d = f(m)-x;
+        if(s*d<0) a = m; else b = m;
     }
+    return m;
 }
 
-function zeroes_bisection(f,a,b,n){
-    var zeroes = [];
+function optimize(f,a,b){
+    var n = 100;
+    for(var k=0; k<14; k++){
+        var h = (b-a)/n;
+        var xmin = a;
+        var ymin = Math.abs(f(a));
+        for(var i=1; i<=n; i++){
+            var x = a+h*i;
+            var y = Math.abs(f(x));
+            if(y<ymin){xmin = x; ymin = y;}
+        }
+        a = xmin-h;
+        b = xmin+h;
+    }
+    return xmin;
+}
+
+function zeros_bisection(f,a,b,n){
+    var zeros = [];
     var h = (b-a)/n;
-    var x0,x1,y0,y1,z;
     for(var k=0; k<n; k++){
-        x0 = a+h*k;
-        x1 = a+h*(k+1);
-        y0 = f(x0);
-        y1 = f(x1);
+        var x0 = a+h*k;
+        var x1 = a+h*(k+1);
+        var y0 = f(x0);
+        var y1 = f(x1);
         if(Number.isNaN(y1-y0)) continue;
         if(Math.sign(y0)!=Math.sign(y1)){
-            if(y0==0){
-                zeroes_push(zeroes,x0);
-            }else{
-                z = invab(f,0,x0,x1);
-                if(Number.isFinite(z)){
-                    zeroes_push(zeroes,z);
-                }
-            }
+            var x = bisection(f,0,x0,x1);
+            if(Number.isFinite(x)){zeros.push(x);}
         }
     }
-    return zeroes;
+    return zeros;
 }
 
-function zeroes(f,a,b){
-    if(a==undefined) a=-100;
-    if(b==undefined) b=100;
-    return zeroes_bisection(f,a,b,10000);
+function zeros_uniq(f,a,epsilon){
+    a.sort(function(x,y){return x-y;});
+    var b = [];
+    var k = 0;
+    var n = a.length;
+    while(k<n){
+        var xmin = a[k];
+        var i = k+1;
+        while(i<n && Math.abs(a[i]-a[k])<epsilon){
+            if(Math.abs(f(a[i]))<Math.abs(f(xmin))){xmin = a[i];}
+            i++;
+        }
+        if(Math.abs(f(xmin))<1E-12){
+            if(Math.abs(xmin)<1E-24){
+                b.push(0);
+            }else if(Math.abs(xmin)>0.001){
+                var xr = Math.round(1E12*xmin)/1E12;
+                if(Math.abs(f(xr))<=Math.abs(f(xmin))){
+                    b.push(xr);
+                }else{
+                    b.push(xmin);
+                }
+            }else{
+                b.push(xmin);
+            }
+        }
+        k = i;
+    }
+    return b;
+}
+
+function zeros(f,a,b){
+    if(a==undefined) a = -100;
+    if(b==undefined) b = 100;
+    var h = 0.0001;
+    var f1 = function(x){
+        return (f(x+3*h)-9*f(x+2*h)+45*f(x+h)
+            -45*f(x-h)+9*f(x-2*h)-f(x-3*h))/(60*h);
+    };
+    var L = zeros_bisection(f,a,b,100000);
+    var L1 = zeros_bisection(f1,a,b,100000);
+    for(var i=0; i<L1.length; i++){
+        if(Math.abs(f(L1[i]))<1E-6){
+            var x = optimize(f,L1[i]-1E-4,L1[i]+1E-4);
+            if(Math.abs(f(x))<1E-12){L.push(x);}
+        }
+    }
+    return zeros_uniq(f,L,1E-6);
 }
 
 // Arithmetic-geometric mean
@@ -2052,7 +2115,7 @@ function ftos(x,m,a){
     return minus?"\u2212"+s:s;
 }
 
-function strip_zeroes(s){
+function strip_zeros(s){
     var n = s.length;
     var point = false;
     for(var i=0; i<n; i++){
@@ -2070,7 +2133,7 @@ function strip_zeroes(s){
 }
 
 function ftos_strip(x,m){
-    return strip_zeroes(ftos(x,m,1));
+    return strip_zeros(ftos(x,m,1));
 }
 
 function labels(gx){
@@ -2100,7 +2163,7 @@ function labels(gx){
         if(x!=0){
             px = px0+Math.floor(mx*x);
             if(px<xmargin || px>w-xmargin) continue;
-            s = strip_zeroes(ftos(x/ax,ax,1));
+            s = strip_zeros(ftos(x/ax,ax,1));
             if(s.length>9) bulky2 = true;
             if(bulky2){
                 if(mod(x,3)==1) py_adjust=22;
@@ -2124,7 +2187,7 @@ function labels(gx){
             py = py0+Math.floor(mx*y);
             if(py<ymargin || py>h-ymargin) continue;
             s = ftos(-y/ay,ay/4,1);
-            if(ay<2){s=strip_zeroes(s);}
+            if(ay<2){s=strip_zeros(s);}
             context.fillText(s,clamp(px0-10,28+10*(s.length-2),w-16),py+6);
         }
     }
@@ -2261,6 +2324,38 @@ function cancel(pid,index,pid_stack){
       !Object.is(pid,pid_stack[index]));
 }
 
+function new_fplot_rec(buffer,gx,color,spoint,y0,wy,count){
+    var ya = y0-wy;
+    var yb = y0+wy;
+    var YA = y0-2*wy;
+    var YB = y0+2*wy;
+    return function fplot_rec(depth,f,a,b,d){
+        var delta_max = 0;
+        var y0 = f(a);
+        for(var x=a; x<b; x+=d){
+            var y = f(x);
+            if(ya<y && y<yb){
+                spoint(color,ax*x,ay*y);
+            }
+            if((ya<y || ya<y0) && (y<yb || y0<yb)){
+                var delta = Math.abs(y-y0);
+                if(delta>delta_max) delta_max = delta;
+            }
+            y0 = y;
+        }
+        if(delta_max>0.02/ay && depth<6){
+            buffer[depth].push(function(){
+                count.value++;
+                var n = 10;
+                var h = (b-a)/n;
+                for(var i=0; i<n; i++){
+                    fplot_rec(depth+1,f,a+h*i,a+h*(i+1),d/n);
+                }
+            });
+        }
+    };
+}
+
 async function fplot(gx,f,d,cond,color){
     var pid = {};
     var index = pid_stack.length;
@@ -2271,22 +2366,39 @@ async function fplot(gx,f,d,cond,color){
     var wy = 0.5*(gx.h+4)/(gx.mx*ay);
     var x0 = (0.5*gx.w-gx.px0)/(gx.mx*ax);
     var y0 = (gx.py0-0.5*gx.h)/(gx.mx*ay);
-    var ya = y0-wy;
-    var yb = y0+wy;
     var k=0;
     d = d/ax;
-    for(var x=x0-wx; x<x0+wx; x+=d){
-        var y = f(x);
-        if(ya<y && y<yb){
-            spoint(color,ax*x,ay*y);
+    var a = x0-wx;
+    var b = x0+wx;
+    var n = 100;
+    var h = (b-a)/n;
+    var count = {value: 0};
+    var buffer = [[],[],[],[],[],[]];
+    var fplot_rec = new_fplot_rec(buffer,gx,color,spoint,y0,wy,count);
+    for(var i=0; i<n; i++){
+        fplot_rec(0,f,a+h*i-0.12*h,a+h*(i+1)+0.12*h,d);
+    }
+    if(gx.animation==true){
+        flush(gx);
+        labels(gx);
+        busy = false;
+        return;
+    }
+    var k = 0;
+    for(var depth=0; depth<buffer.length; depth++){
+        if(count.value>600) break;
+        var bfn = buffer[depth];
+        for(var i=0; i<bfn.length; i++){
+            bfn[i]();
+            if(depth!=0) k++;
+            if(cond && k==100){k = 0; await sleep(10);}
+            if(cancel(pid,index,pid_stack)){return;}
         }
-        if(cond && k==4000){
-            k=0;
-            await sleep(10);
-        }else{
-            k++;
+        if(depth==0 && cond){
+            flush(gx);
+            labels(gx);
+            await sleep(20);
         }
-        if(cancel(pid,index,pid_stack)) return;
     }
     flush(gx);
     labels(gx);
@@ -2399,14 +2511,13 @@ async function vplot(gx,f,d,cond,color){
 
 async function plot_async(gx,f,color){
     if(gx.sync_mode==true){
-        fplot(gx,f,0.0002,false,color);
-    }else{
         fplot(gx,f,0.01,false,color);
-        if(gx.animation==true) return;
-        while(busy){await sleep(40);}
-        await sleep(40);
-        fplot(gx,f,0.001,true,color);
-        fplot(gx,f,0.0001,true,color);
+    }else{
+        if(gx.animation==true){
+            fplot(gx,f,0.01,false,color);
+        }else{
+            fplot(gx,f,0.01,true,color);
+        }
     }
 }
 
@@ -2523,9 +2634,13 @@ function plot_level_async(gx,f,color){
         var r = freq*f(x,y);
         return r-1-Math.floor(r-0.5);
     };
-    plot_level(gx,f,1,false);
+    if(iso_mode==0 || iso_mode==2){
+        plot_level(gx,f,1,false);
+    }
     labels(gx);
-    // plot_zero_set_async(gx,g,color);
+    if(iso_mode>0){
+        plot_zero_set_async(gx,g,color);
+    }
 }
 
 function bisection_bool(state,f,a,b){
@@ -2785,6 +2900,10 @@ function plot_node_basic(gx,t,color){
             f = compile(t[1],[])();
             points(gx,color,f,a);
         }
+    }else if(Array.isArray(t) &&
+        typeof t[0]==="string" && plot_cmd_tab.hasOwnProperty(t[0])
+    ){
+        eval_cmd(t);
     }else if(Array.isArray(t) && t[0]==="="){
         if(Array.isArray(t[1]) && t[1][0]==="D"){
             var v = t[1][1];
@@ -2856,6 +2975,16 @@ function eval_node(t){
     value();
 }
 
+function eval_cmd(t){
+    if(extension_loaded.cmd){
+        cmd_tab[t[0]](t);
+    }else{
+        async_continuation = "await";
+        load_extension(cmd_tab,"cmd","js/ext-cmd.js");
+        throw new Repeat();
+    }
+}
+
 function eval_statements(t){
     if(Array.isArray(t) && (t[0]==="block" || t[0]===";")){
         for(var i=1; i<t.length; i++){
@@ -2867,13 +2996,7 @@ function eval_statements(t){
         }else if(Array.isArray(t) && typeof t[0]=="string" &&
             cmd_tab.hasOwnProperty(t[0])
         ){
-            if(extension_loaded.cmd){
-                cmd_tab[t[0]](t);
-            }else{
-                async_continuation = "await";
-                load_extension(cmd_tab,"cmd","js/ext-cmd.js");
-                throw new Repeat();
-            }
+            eval_cmd(t);
         }else{
             eval_node(t);
         }
@@ -3077,6 +3200,10 @@ function yscale_dec(){
 
 function sys(n){
     sys_mode = n;
+}
+
+function iso(n){
+    iso_mode = n;
 }
 
 function switch_hud(){

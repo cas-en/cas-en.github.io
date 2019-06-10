@@ -38,10 +38,12 @@
   >A function</a>.
 <li><a href="plot.htm?sin(x),cos(x),tan(x),cot(x)"
   >Several functions</a>.
-<li><a href="plot.htm?f(x),f%27(x);f(x):=sin(x)"
+<li><a href="plot.htm?f(x),f%27(x);%20f(x):=sin(x)"
   >A function and its derivative</a>.
-<li><a href="plot.htm?f(x),f%27(x),f%27%27(x),f%27%27%27(x);f(x):=sin(x)"
+<li><a href="plot.htm?f(x),f%27(x),f%27%27(x),f%27%27%27(x);%20f(x):=sin(x)"
   >A function and its first three derivatives</a>.
+<li><a href="plot.htm?f(x);%20f(x):=x*(x-2);;calc(%22zeros(f,-10,10)%22)"
+  >Zeros of a function</a>.
 <li><a href="plot.htm?f(x),%20f(a)+f%27(a)*(x-a);%20a:=1,%20f(x):=sin(x)"
   >A tangent of a function</a>.
 <li><a href="plot.htm?int(0,x,t.sin(t)/t)"
@@ -62,6 +64,8 @@
   >Slider for one parameter</a>.
 <li><a href="plot.htm?y=a*sin(b*x);%20slider(a,1,4);%20slider(b,1,4)"
   >Sliders for two parameters</a>.
+<li><a href="plot.htm?sum(1,n,k.sin((2k-1)*x)/(2k-1));%20slider(n,1,20)"
+  >Partial sum of a Fourier series</a>.
 </ul>
 
 <br>
@@ -132,7 +136,7 @@
 <li><a href="plot.htm?abs(x)%3c1"
   >An inequality in one variable</a>.
 <li><a href="plot.htm?abs(x)+abs(y)%3c1"
-  >An inequality in two variables.</a>.
+  >An inequality in two variables</a>.
 <li><a href="plot.htm?abs(x)+abs(y)%3c2,abs(y)%3c1"
   >A system of inequalities</a>. Covering visible.
 <li><a href="plot.htm?abs(x)+abs(y)%3c2&abs(y)%3c1"
@@ -148,6 +152,8 @@
 <li><a href="plot.htm?y%27%27=-y;%20p:=%5b0,0,1%5d"
   >A second order ODE</a>. Initial state is given by
   <code>p:=[x<sub>0</sub>,y(x<sub>0</sub>),y'(x<sub>0</sub>)]</code>.
+<li><a href="plot.htm?x(t);%20x%27%27=t*x;%20p:=%5b0,0,1%5d"
+  >For a function of time</a>.
 <li><a href="vector-field.htm?y%27=y,%20%5b1,y%5d;%20p:=%5b0,1%5d"
   >Slope field of a first order ODE</a>.
 <li><a href="plot.htm?f(x);%20f:=iter(y.pli(x.1+int(0,x,t.y(t)),-10,10,0.1),40,t.1)"
@@ -175,8 +181,14 @@
 <ul>
 <li><a href="plot-bivariate.htm?cos(sqrt(x^2+y^2))"
   >A bivariate function</a>.
+  <a href="plot-bivariate.htm?cos(sqrt(x%5e2+y%5e2));%20slider(alpha,0,1)"
+  >Transparent graph</a>.
 <li><a href="plot-bivariate.htm?cos(sqrt(x^2+y^2));d(20)"
   >A bivariate function</a> in perspective projection.
+<li><a href="plot-bivariate.htm?4x*exp(-x%5e2-y%5e2);%20colorfn(1);;scale(0.2)"
+  >Heatmap</a>.
+  <a href="plot-bivariate.htm?4x*exp(-x%5e2-y%5e2);%20colorfn(1);%20slider(alpha,0,1);;scale(0.2)"
+  >Transparent graph</a>.
 <li><a href="plot-bivariate.htm?10+exp(-(x-20)%5e2-(y-30)%5e2);%20P(20,30,10);;scale(0.2)"
   >Displacement of the coordinate system</a>.
 <li><a href="plot-bivariate.htm?sin(10/x)sin(10/y);tile(0.2)"
@@ -187,6 +199,10 @@
   >A bivariate function with a level curve</a>.
 <li><a href="plot-bivariate.htm?f(x,y),f(x,y)=c%20for%20c%20in%20-4:8;f(x,y):=x*sin(y)+y*cos(x);;scale(0.5)"
   >A bivariate function with many level curves</a>.
+<li><a href="plot.htm?x*sin(y)+y*cos(x);%20iso(1);%20freq(1)"
+  >Level curves in the xy-plane</a>.
+  <a href="plot.htm?x*sin(y)+y*cos(x);%20iso(2);%20freq(1)"
+  >With periodic heat map</a>.
 <li><a href="plot-bivariate.htm?4exp((-x%5e2-y%5e2)/a);%20slider(a,1,10);;scale(0.5)"
   >Slider for one parameter</a>.
 <li><a href="plot-bivariate.htm?4exp(-abs(x/a)%5eb-abs(y/a)%5eb);%20slider(a,1,10),slider(b,1,4);;scale(0.5)"
