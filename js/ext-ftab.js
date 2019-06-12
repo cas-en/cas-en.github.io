@@ -901,7 +901,7 @@ function carmichael_lambda(n){
     if(n<1) return NaN;
     if(n==1) return 1;
     var a,i,y;
-    a = factor(n);
+    a = factor(n).slice();
     for(i=0; i<a.length; i++){
         y = a[i];
         if(y[0]==2){
