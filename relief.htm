@@ -27,7 +27,7 @@ dark = false;
 <input type="button" value="+" onclick="xyzscale_inc()"> 
 <input type="button" value="&minus;" onclick="xyzscale_dec()">
 <br>
-<input type="text" id="inputf"
+<input type="text" id="inputf" spellcheck="false"
 onkeyup="keys(event);" value="abs(z)">
 
 <br>
@@ -41,7 +41,8 @@ onkeyup="keys(event);" value="abs(z)">
 <a href="doc-complex.htm">Help</a>
 <br><br>
 <input type="button" value="Calculate" onclick="calc()">
-<input type="text" id="input-calc" onkeyup="keys_calc(event);">
+<input type="text" id="input-calc" spellcheck="false"
+onkeyup="keys_calc(event);">
 <div id="calc-out" class="mono"></div>
 </div>
 </table>

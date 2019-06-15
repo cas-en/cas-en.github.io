@@ -19,7 +19,7 @@
 <input type="button" value="+" onclick="xyscale_inc()"> 
 <input type="button" value="&minus;" onclick="xyscale_dec()">
 <br>
-<input type="text" id="inputf"
+<input type="text" id="inputf" spellcheck="false"
 onkeyup="keys(event);" value="y=x, x^2+y^2=1">
 
 <br>
@@ -35,7 +35,8 @@ onkeyup="keys(event);" value="y=x, x^2+y^2=1">
 &nbsp;<a href="doc.htm">Help</a>
 <br><br>
 <input type="button" value="Calculate" onclick="calc()">
-<input type="text" id="input-calc" onkeyup="keys_calc(event);">
+<input type="text" id="input-calc" spellcheck="false"
+onkeyup="keys_calc(event);">
 <div id="calc-out" class="mono"></div>
 </div>
 </table>
