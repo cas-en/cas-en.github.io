@@ -62,7 +62,7 @@
   >Table for a function</a>.
 <li><a href="plot.htm?y=x%5ea;%20slider(a,0,2)"
   >Slider for one parameter</a>.
-<li><a href="plot.htm?y=a*sin(b*x);%20slider(a,1,4);%20slider(b,1,4)"
+<li><a href="plot.htm?y=a*sin(b*x);%20slider(a,1,4),%20slider(b,1,4)"
   >Sliders for two parameters</a>.
 <li><a href="plot.htm?sum(1,n,k.sin((2k-1)*x)/(2k-1));%20slider(n,1,20)"
   >Partial sum of a Fourier series</a>.
@@ -102,8 +102,14 @@
   >Applying a rotation matrix</a>.
 <li><a href="plot.htm?rot(n*grad)*%5b4cos(t),sin(t)%5d%20for%20n%20in%200:360:10"
   >Applying a family of rotation matrices</a>.
+<li><a href="plot.htm?f(t),vec(f(a),f%27(a));%20f(t):=%5b2cos(t),sin(2t)%5d;%20slider(a,0,2pi)"
+  >Tangential vector of a curve</a>.
+<li><a href="plot.htm?f(t),vec(f(a),T,rot(pi/2)*T);%20T:=f%27(a)/%7cf%27(a)%7c;%20f(t):=%5b2cos(t),sin(2t)%5d;%20slider(a,0,2pi)"
+  >TN-frame</a>.
+<li><a href="plot.htm?f(t),f(a)+1/K*(%5bcos(t),sin(t)%5d+N),points(%5bf(a)%5d);%20N:=rot(pi/2)*T;%20K:=det(cat(%5bf%27(a)%5d,%5bf%27%27(a)%5d))/%7cf%27(a)%7c%5e3;%20T:=f%27(a)/%7cf%27(a)%7c;%20f(t):=%5b2cos(t),sin(2t)%5d;%20slider(a,0,2pi)"
+  >Osculating circle</a>.
 <li><a href="plot.htm?(sin(5t)+4)*%5bcos(t),sin(t)%5d"
-  >A star</a>.
+  >A smooth star</a>.
 </ul>
 
 
