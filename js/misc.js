@@ -10,7 +10,7 @@ async function fplot(gx,f,d,cond,color){
     var index = pid_stack.length;
     pid_stack.push(pid);
     busy = true;
-    var spoint = gx.spoint;
+    var point = gx.point();
     var wx = 0.5*gx.w/(gx.mx*ax);
     var wy = 0.5*(gx.h+4)/(gx.mx*ay);
     var x0 = (0.5*gx.w-gx.px0)/(gx.mx*ax);
@@ -22,7 +22,7 @@ async function fplot(gx,f,d,cond,color){
     for(var x=x0-wx; x<x0+wx; x+=d){
         var y = f(x);
         if(ya<y && y<yb){
-            spoint(color,ax*x,ay*y);
+            point(color,ax*x,ay*y);
         }
         if(cond && k==4000){
             k=0;
@@ -42,7 +42,7 @@ async function plot_async(gx,f,color){
         fplot(gx,f,0.0002,false,color);
     }else{
         fplot(gx,f,0.01,false,color);
-        if(gx.animation==true) return;
+        if(gx.animation) return;
         while(busy){await sleep(40);}
         await sleep(40);
         fplot(gx,f,0.001,true,color);
@@ -108,7 +108,7 @@ async function plot_fractal(gx,f,n,cond){
 async function plot_fractal_async(gx,f){
     if(gx.sync_mode==true){
         plot_fractal(gx,f,1,false);
-    }else if(plot_refresh){
+    }else if(refresh){
         plot_refresh = false;
         plot_fractal(gx,f,20,false);
     }else{

@@ -167,8 +167,24 @@ function zeta(s,a){
     }
 }
 
+var Btab = [1];
+
+function tabB(n){
+    while(n>=Btab.length){
+        var m = Btab.length;
+        var s = 0;
+        for(var k=0; k<m; k++){s+=bc(m+1,k)*Btab[k];}
+        Btab.push(1-s/(m+1));
+    }
+    return Btab[n];
+}
+
 function bernoulliB(n){
-    return n==0?1:-n*zeta(1-n);
+    if(n==Math.floor(n) && n>=0 && n<260){
+        return tabB(n);
+    }else{
+        return -n*zeta(1-n);
+    }
 }
 
 function bernoulliBm(n){
@@ -677,6 +693,10 @@ function transpose(A){
     return B;
 }
 
+function mul_vector_matrix(v,A){
+    return mul_matrix_vector(transpose(A),v);
+}
+
 function unit_vector(v){
     var r = abs_vec(v);
     return mul_scalar_vector(1/r,v);
@@ -900,10 +920,9 @@ function euler_phi(n){
 function carmichael_lambda(n){
     if(n<1) return NaN;
     if(n==1) return 1;
-    var a,i,y;
-    a = factor(n).slice();
-    for(i=0; i<a.length; i++){
-        y = a[i];
+    var a = factor(n).slice();
+    for(var i=0; i<a.length; i++){
+        var y = a[i];
         if(y[0]==2){
             if(y[1]==1) y = 1;
             else if(y[1]==2) y = 2;
@@ -1245,16 +1264,25 @@ function cdfLog(x,p){
     return s;
 }
 
+function quality_level(n){
+    if(n==undefined) n = 0;
+    max_count = 600*Math.pow(10,n);
+}
+
+function dot(a){
+    dot_alpha = a;
+}
+
 extension_table.ftab = {
 PT: ChebyshevT, PU: ChebyshevU, PH: Hermite, 
 PP: Legendre, PL: Laguerre, bc: bc, s1: s1, s2: s2,
-psi: psi, digamma: digamma,
+psi: psi, digamma: digamma, tabB: tabB,
 zeta: zeta, B: Bvariadic, Bm: bernoulliBm, ipp: ipp,
 table: table, Wertetabelle: table, Delta: Delta,
 Si: Si, Ci: Ci, det: det, unit: unit_vector, I: idm,
 diag: diag_variadic, _matrix_pow_: matrix_pow, expm: expm,
 _vdiff_: vdiff, nabla: nablah(0.001), divop: divoph(0.001),
-jacobi: jacobih(0.001),
+jacobi: jacobih(0.001), _mulvm_: mul_vector_matrix,
 apply: apply, rot: rotation_matrix, tr: trace, tp: transpose,
 pli: pli_general, L: laplace_transform, delta: delta,
 gcd: gcd_variadic, ggT: gcd_variadic,
@@ -1271,7 +1299,8 @@ cdfF: cdfF, pdfF: pdfF, cdfW: cdfW, pdfW: pdfW,
 cdfGamma: cdfGamma, pdfGamma: pdfGamma,
 cdfBeta: cdfBeta, pdfBeta: pdfBeta, pmfB: pmfB, cdfB: cdfB,
 cmfG: pmfG, cdfG: cdfG, pmfH: pmfH, cdfH: cdfH,
-pmfP: pmfP, cdfP: cdfP, pmfLog: pmfLog, cdfLog: cdfLog
+pmfP: pmfP, cdfP: cdfP, pmfLog: pmfLog, cdfLog: cdfLog,
+level: quality_level, dot: dot
 };
 
 

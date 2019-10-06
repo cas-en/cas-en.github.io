@@ -22,6 +22,8 @@ var freq = 1;
 var iso_mode = 0;
 var sys_mode = 2;
 var sys_xyz = {};
+var max_count = 600;
+var dot_alpha = 0;
 
 var color_bg = [255,255,255,255];
 var color_axes = [160,160,160];
@@ -53,7 +55,7 @@ var diff_operator = diffh_curry(0.001);
 var ftab = {
     pi: Math.PI, tau: 2*Math.PI, e: Math.E, nan: NaN, inf: Infinity,
     deg: Math.PI/180, grad: Math.PI/180, gon: Math.PI/200,
-    gc: GAMMA, gr: PHI, angle: angle, t0: 0, t1: 2*Math.PI,
+    gc: GAMMA, gr: PHI, angle: angle, t0: 0, t1: 2*Math.PI, tstep: 1,
     abs: Math.abs, sgn: Math.sign, sign: Math.sign,
     max: Math.max, min: Math.min, clamp: clamp,
     hypot: Math.hypot, floor: Math.floor, ceil: Math.ceil,
@@ -65,7 +67,7 @@ var ftab = {
     exp: Math.exp, expm1: Math.expm1,
     log: log, ln: Math.log, lg: lg, ld: ld, lb: ld,
     sin: Math.sin, cos: Math.cos, tan: Math.tan,
-    cot: cot, sec: sec, csc: csc,
+    cot: cot, sec: sec, csc: csc, acot: acot, arccot: acot,
     asin: Math.asin, acos: Math.acos, atan: Math.atan,
     arcsin: Math.asin, arccos: Math.acos, arctan: Math.atan,
     sinh: sinh, cosh: cosh, tanh: tanh, coth: coth,
@@ -101,9 +103,9 @@ var plot_cmd_tab = {
     vec:0, line:0, chain:0
 };
 
+// begin localisation
 var keyword_table = {
-    "for": "for", "in": "in",
-    "and": "&", "or": "|"
+    "for": "for", "in": "in", "and": "&", "or": "|", "to": ":"
 };
 
 var lang_points = "points";
@@ -148,6 +150,7 @@ var lang = {
     },
     p_to_short: "Error: p is too short."
 };
+// end localisation
 
 function load_async(URL,callback){
    var head = document.getElementsByTagName("head")[0];
@@ -448,16 +451,32 @@ function gamma(x){
     }
 }
 
+var fac_tab = [1,1];
+
+function tab_fac(n){
+    while(n>=fac_tab.length){
+        if(n>180) return Infinity;
+        var k = fac_tab.length;
+        var y = fac_tab[k-1];
+        fac_tab.push(y*k);
+    }
+    return fac_tab[n];
+}
+
 function fac(x){
-    return gamma(x+1);
+    if(x==Math.floor(x) && x>=0){
+        return tab_fac(x);
+    }else{
+        return gamma(x+1);
+    }
 }
 
 function ffac(n,k){
-    return gamma(n+1)/gamma(n-k+1)
+    return fac(n)/fac(n-k)
 }
 
 function rfac(n,k){
-    return gamma(n+k)/gamma(n);
+    return fac(n+k-1)/fac(n-1);
 }
 
 function cbrt(x){
@@ -932,8 +951,12 @@ function str(x,ftos,newline){
             return x.toString().toLowerCase();
         }
     }else if(x.hasOwnProperty("re")){
-        var sep = x.im<0? "": "+";
-        return [str(x.re),sep,str(x.im),"i"].join("");
+        if(x.im==0){
+            return str(x.re);
+        }else{
+            var sep = x.im<0? "": "+";
+            return [str(x.re),sep,str(x.im),"i"].join("");
+        }
     }else{
         return JSON.stringify(x);
     }
@@ -1025,13 +1048,13 @@ function scan(s){
             if(s[i]=='\n'){line++; col=0;}
             else {col++;}
             i++;
-        }else if(i+1<n && s[i]=='<' && s[i+1]=='='){
+        }else if(s[i]=='<' && i+1<n && s[i+1]=='='){
             a.push([Symbol,"<=",line,col]);
             i+=2; col+=2;
-        }else if(i+1<n && s[i]=='>' && s[i+1]=='='){
+        }else if(s[i]=='>' && i+1<n && s[i+1]=='='){
             a.push([Symbol,">=",line,col]);
             i+=2; col+=2;
-        }else if(i+1<n && s[i]==':' && s[i+1]=='='){
+        }else if(s[i]==':' && i+1<n && s[i+1]=='='){
             a.push([Symbol,":=",line,col]);
             i+=2; col+=2;
         }else if(superscript.hasOwnProperty(s[i])){
@@ -1053,6 +1076,9 @@ function scan(s){
             while(i<n && s[i]!='"'){i++; col++;}
             a.push([SymbolString,s.slice(j,i),line,col0]);
             i++; col++;
+        }else if(s[i]=='*' && i+1<n && s[i+1]=='*'){
+            a.push([Symbol,"^",line,col]);
+            i+=2; col+=2;
         }else{
             if((s[i]=='(' || s[i]=='[') && a.length>0){
                 var last = a[a.length-1];
@@ -1324,7 +1350,7 @@ function for_expression(i){
     var t = i.a[i.index];
     if(t[0]==Symbol && t[1]=="for"){
         i.index++;
-        var y = disjunction(i);
+        var y = assignment(i);
         return ["for",x,y];
     }else{
         return x;
@@ -1354,6 +1380,10 @@ function expression_list(i,type){
         var t = i.a[i.index];
         if(t[0]==Symbol && t[1]==","){
             i.index++;
+            t = i.a[i.index];
+            if(t[0]==SymbolTerminator || t[0]==Symbol && t[1]==";"){
+                break;
+            }
         }else{
             break;
         }
@@ -1378,6 +1408,8 @@ function semicolon(i,type){
         t = i.a[i.index];
         if(t[0]==Symbol && t[1]==";"){
             i.index++;
+            t = i.a[i.index];
+            if(t[0]==SymbolTerminator) break;
         }else{
             break;
         }
@@ -1569,6 +1601,9 @@ function infer_type(t,local_variables){
                     if(T[1]===TypeMatrix){
                         t[0] = "_mulmm_";
                         return TypeMatrix;
+                    }else if(T[1]===TypeVector){
+                        t[0] = "_mulvm_";
+                        return TypeVector;
                     }else{
                         t[0] = "_mulst_";
                         return TypeMatrix;
@@ -1924,10 +1959,17 @@ function new_point(gx){
         var ry = gx.py0-my*y;
         fpsets(255,color,rx,ry);
     };
-    var point = function(color,x,y){
-        var px = floor(gx.w2+mx*x);
-        var py = floor(gx.h2-my*y);
+    var bpoint = function(color,x,y){
+        var px = floor(gx.px0+mx*x);
+        var py = floor(gx.py0-my*y);
         pset4(color,px,py);
+    };
+    var needle = function(a){
+        return function(color,x,y){
+            var px = floor(gx.px0+mx*x);
+            var py = floor(gx.py0-my*y);
+            pseta_median(color,px,py,a);
+        };
     };
     var hline = function(gx,py0,y,a){
         var py = py0-Math.floor(my*y);
@@ -1991,11 +2033,14 @@ function new_point(gx){
             fpsets(255,color,rx+r*Math.cos(t),ry+r*Math.sin(t));
         }
     };
+    var point = function(){
+        return dot_alpha==0?spoint:dot_alpha>1?bpoint:needle(dot_alpha);
+    };
 
     gx.pset = pset;
     gx.pset4 = pset4;
-    gx.point = point;
     gx.spoint = spoint;
+    gx.point = point;
     gx.fpsets = fpsets;
     gx.hline = hline;
     gx.vline = vline;
@@ -2220,23 +2265,23 @@ function flush(gx){
     gx.context.putImageData(gx.img,0,0);
 }
 
-var clientXp=0;
-var clientYp=0;
-var moved = false;
+var clientXp = 0;
+var clientYp = 0;
+var refresh = false;
 
-function refresh(gx){
+function refresh_system(gx){
     clear_system(gx);
     flush(gx);
     labels(gx);
 }
 
 function move_refresh(gx){
-    refresh(gx);
+    refresh_system(gx);
 }
 
 function mouse_move_handler(e){
     if(e.buttons==1){
-        moved = true;
+        refresh = true;
         var gx = graphics;
         pid_stack = [];
         var dx = e.clientX-clientXp;
@@ -2254,16 +2299,16 @@ function mouse_move_handler(e){
 }
 
 function mouse_up_handler(e){
-    if(moved){
+    if(refresh){
+        refresh = false;
         update(graphics);
-        moved = false;
     }
 }
 
 function touch_move(e){
     if(e.touches.length!=0){
         e = e.touches[0];
-        moved = true;
+        refresh = true;
         var gx = graphics;
         pid_stack = [];
         var dx = e.clientX-clientXp;
@@ -2286,9 +2331,9 @@ function touch_start(e){
 }
 
 function touch_end(){
-    if(moved){
+    if(refresh){
+        refresh = false;
         update(graphics);
-        moved = false;
     }
 }
 
@@ -2311,7 +2356,7 @@ function new_system(last_gx){
         canvas.addEventListener("touchend", touch_end, false);
         canvas.addEventListener("touchmove", touch_move, false);
     }
-    refresh(gx);
+    refresh_system(gx);
 
     return gx;
 }
@@ -2324,7 +2369,7 @@ function cancel(pid,index,pid_stack){
       !Object.is(pid,pid_stack[index]));
 }
 
-function new_fplot_rec(buffer,gx,color,spoint,y0,wy,count){
+function new_fplot_rec(buffer,gx,color,point,y0,wy,count){
     var ya = y0-wy;
     var yb = y0+wy;
     var YA = y0-2*wy;
@@ -2335,7 +2380,7 @@ function new_fplot_rec(buffer,gx,color,spoint,y0,wy,count){
         for(var x=a; x<b; x+=d){
             var y = f(x);
             if(ya<y && y<yb){
-                spoint(color,ax*x,ay*y);
+                point(color,ax*x,ay*y);
             }
             if((ya<y || ya<y0) && (y<yb || y0<yb)){
                 var delta = Math.abs(y-y0);
@@ -2361,7 +2406,7 @@ async function fplot(gx,f,d,cond,color){
     var index = pid_stack.length;
     pid_stack.push(pid);
     busy = true;
-    var spoint = gx.spoint;
+    var point = gx.point();
     var wx = 0.5*gx.w/(gx.mx*ax);
     var wy = 0.5*(gx.h+4)/(gx.mx*ay);
     var x0 = (0.5*gx.w-gx.px0)/(gx.mx*ax);
@@ -2374,11 +2419,11 @@ async function fplot(gx,f,d,cond,color){
     var h = (b-a)/n;
     var count = {value: 0};
     var buffer = [[],[],[],[],[],[]];
-    var fplot_rec = new_fplot_rec(buffer,gx,color,spoint,y0,wy,count);
+    var fplot_rec = new_fplot_rec(buffer,gx,color,point,y0,wy,count);
     for(var i=0; i<n; i++){
         fplot_rec(0,f,a+h*i-0.12*h,a+h*(i+1)+0.12*h,d);
     }
-    if(gx.animation==true){
+    if(gx.animation){
         flush(gx);
         labels(gx);
         busy = false;
@@ -2386,7 +2431,7 @@ async function fplot(gx,f,d,cond,color){
     }
     var k = 0;
     for(var depth=0; depth<buffer.length; depth++){
-        if(count.value>600) break;
+        if(count.value>max_count) break;
         var bfn = buffer[depth];
         for(var i=0; i<bfn.length; i++){
             bfn[i]();
@@ -2415,6 +2460,7 @@ function bisection_fast(N,state,f,a,b){
 }
 
 async function plot_zero_set(gx,f,n,N,cond,color){
+    var point = gx.point();
     var pid = {};
     var index = pid_stack.length;
     pid_stack.push(pid);
@@ -2444,7 +2490,7 @@ async function plot_zero_set(gx,f,n,N,cond,color){
                     var g = function(x){return f(x,y);};
                     var x0 = bisection_fast(N,state,g,x-dx,x+dx);
                     if(Math.abs(f(x0,y))<0.1){
-                        gx.spoint(color,ax*x0,ay*y);
+                        point(color,ax*x0,ay*y);
                     }
                 }
                 state = z;
@@ -2467,7 +2513,7 @@ async function plot_zero_set(gx,f,n,N,cond,color){
                     var g = function(y){return f(x,y);};
                     var y0 = bisection_fast(N,!state,g,y-dy,y+dy);
                     if(Math.abs(f(x,y0))<0.1){
-                        gx.spoint(color,ax*x,ay*y0);
+                        point(color,ax*x,ay*y0);
                     }
                 }
                 state = z;
@@ -2489,13 +2535,14 @@ async function vplot(gx,f,d,cond,color){
     var index = pid_stack.length;
     pid_stack.push(pid);
     busy = true;
-    var spoint = gx.spoint;
+    var point = gx.point();
     var k=0;
     var t0 = ftab.t0;
     var t1 = ftab.t1;
+    d = d*ftab.tstep;
     for(var t=t0; t<t1; t+=d){
         var v = f(t);
-        spoint(color,ax*v[0],ay*v[1]);
+        point(color,ax*v[0],ay*v[1]);
         if(cond && k==4000){
             k=0;
             await sleep(10);
@@ -2513,7 +2560,7 @@ async function plot_async(gx,f,color){
     if(gx.sync_mode==true){
         fplot(gx,f,0.01,false,color);
     }else{
-        if(gx.animation==true){
+        if(gx.animation){
             fplot(gx,f,0.01,false,color);
         }else{
             fplot(gx,f,0.01,true,color);
@@ -2525,7 +2572,7 @@ async function plot_zero_set_async(gx,f,color){
     if(gx.sync_mode==true){
         plot_zero_set(gx,f,1,14,false,color);
     }else{
-        if(gx.animation==true){
+        if(gx.animation){
             plot_zero_set(gx,f,40,10,false,color);
             return;
         }
@@ -2541,7 +2588,7 @@ async function vplot_async(gx,f,color){
         vplot(gx,f,0.001,false,color);
     }else{
         vplot(gx,f,0.01,false,color);
-        if(gx.animation==true) return;
+        if(gx.animation) return;
         while(busy){await sleep(40);}
         await sleep(40);
         vplot(gx,f,0.001,true,color);
@@ -2656,6 +2703,7 @@ function plot_bool(gx,f,color,n){
     var W = gx.w;
     var H = gx.h;
     var px,py,x,y,z;
+    var point = gx.point();
     var pseta = gx.pseta_median;
     var alpha = dark?0.3:0.4;
     var pset = function(color,x,y){pseta(color,x,y,alpha);}
@@ -2677,7 +2725,7 @@ function plot_bool(gx,f,color,n){
                 if(state!=undefined){
                     var g = function(x){return f(x,y);};
                     var x0 = bisection_bool(state,g,x-d,x+d);
-                    gx.spoint(color,ax*x0,ay*y);
+                    point(color,ax*x0,ay*y);
                 }
                 state = z;
             }
@@ -2693,7 +2741,7 @@ function plot_bool(gx,f,color,n){
                 if(state!=undefined){
                     var g = function(y){return f(x,y);};
                     var y0 = bisection_bool(!state,g,y-d,y+d);
-                    gx.spoint(color,ax*x,ay*y0);
+                    point(color,ax*x,ay*y0);
                 }
                 state = z;
             }
@@ -2866,12 +2914,16 @@ function substitute(t,v,value){
     }
 }
 
+function repr(x){
+    return Array.isArray(x)?["[]"].concat(x):x;
+}
+
 function node_loop(callback,gx,t,color){
     var v = t[2][1];
     var a = compile(t[2][2],[])();
     var node = t[1];
     for(var i=0; i<a.length; i++){
-        t = substitute(node,v,a[i]);
+        t = substitute(node,v,repr(a[i]));
         if(Array.isArray(t) && t[0]===";"){
             for(var j=2; j<t.length; j++){
                 eval_statements(t[j]);
@@ -3030,9 +3082,9 @@ function plot(gx){
                 eval_statements(t[i]);
             }
             t = t[1];
-            if(t===null){refresh(gx); return;}
+            if(t===null){refresh_system(gx); return;}
         }
-        refresh(gx);
+        refresh_system(gx);
         if(Array.isArray(t) && t[0]==="block"){
             for(var i=1; i<t.length; i++){
                 if(Array.isArray(t[i]) && t[i][0]===":="){
@@ -3050,7 +3102,7 @@ function plot(gx){
             }
         }
     }else{
-        refresh(gx);
+        refresh_system(gx);
     }
 }
 
@@ -3073,6 +3125,7 @@ function calculate_eval(t,conf){
         global_definition(t);
     }else{
         if(conf==="complex"){
+            infer_type(t);
             return ccompile(t,[])();
         }else{
             infer_type(t);
@@ -3342,6 +3395,10 @@ function calc_img(){
     var input = document.getElementById("input-calc");
     input.value = "img(540,360)";
     calc();
+}
+
+function ftab_set(id,value){
+    ftab[id] = value;
 }
 
 function process_post_applications(){

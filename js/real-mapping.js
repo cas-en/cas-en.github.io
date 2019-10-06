@@ -4,10 +4,7 @@ ftab["u1"] = 10;
 ftab["v0"] = -10;
 ftab["v1"] = 10;
 
-var plot_refresh = false;
-
 function move_refresh(gx){
-    plot_refresh = true;
     update(gx);
 }
 
@@ -29,7 +26,7 @@ async function plot_net(gx,f,d,cond){
     var m = 1;
     var color1 = [0,0,160];
     var color2 = [140,0,140];
-    var point = gx.spoint;
+    var point = gx.point();
 
     for(y=v0; y<=v1; y+=ystep){
         for(x=u0; x<u1; x+=d){
@@ -61,8 +58,7 @@ async function plot_net(gx,f,d,cond){
 async function plot_net_async(gx,f){
     if(gx.sync_mode==true){
         plot_net(gx,f,0.002,false);
-    }else if(plot_refresh){
-        plot_refresh = false;
+    }else if(refresh){
         plot_net(gx,f,0.1,false);
     }else{
         plot_net(gx,f,0.02,false);

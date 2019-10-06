@@ -170,6 +170,10 @@
   >An autonomous system of two ODE</a>.
 <li><a href="plot.htm?u(x),v(x);%20%5bu,v%5d%27=%5bv,u*x%5d;%20p:=%5b0,1,0%5d"
   >A non-autonomous system of two ODE</a>.
+<li><a href="vector-field.htm?(curve(%5bu(t),v(t)%5d);%20p:=%5b0,0,a%5d;%20%5bu,v%5d%27=f(u,v))%20for%20a%20in%20-6:6,%20f(x,y);%20t0:=-10,%20t1:=10;%20f(u,v):=%5bv,-v/4-sin(u)%5d"
+  >Phase portrait of the damped pendulum</a>.
+  <a href="vector-field.htm?f(x,y);%20f(u,v):=%5bv,-v/4-sin(u)%5d;%20stream(1)"
+  >Stream lines</a>.
 <li><a href="plot.htm?x(t);%20x%27%27=-x/%7cx%7c%5e3;%20p:=%5b0,%5b4,0%5d,%5b0,0.2%5d%5d;%20t1:=20;%20tw:=20"
   >The one body problem</a>.
   <a href="plot.htm?points(x,0:20:0.5);%20x%27%27=-x/%7cx%7c%5e3;%20p:=%5b0,%5b4,0%5d,%5b0,0.2%5d%5d;%20t1:=20;%20tw:=20"
@@ -178,8 +182,10 @@
   >The one body problem as a first order system</a>.
 <li><a href="plot.htm?x(t),1/%7c%5bx,y%5d%7c;%20x%27%27=x/%7cx%7c%5e3;%20p:=%5b0,%5b-10,1%5d,%5b2,0%5d%5d;%20t1:=20;%20tw:=20"
   >Scattering at a Coulomb potential</a>.
-<li><a href="plot.htm?%5bx(t),z(t)%5d;%20%5bx,y,z%5d%27=%5b10(y-x),x*(28-z)-y,x*y-8/3*z%5d;%20p:=%5b0,1,0,20%5d;%20t1:=40;%20tw:=40;;scale(5),P(0,20)"
-  >The Lorenz attractor</a>. Projection on the xz plane.
+<li><a href="plot-bivariate.htm?%5bx(t),y(t),z(t)%5d;%20%5bx,y,z%5d%27=%5b10(y-x),x*(28-z)-y,x*y-8/3*z%5d;%20p:=%5b0,1,0,20%5d;%20t1:=20;%20tw:=20;;scale(5)"
+  >The Lorenz attractor</a>.
+  <a href="plot.htm?%5bx(t),z(t)%5d;%20%5bx,y,z%5d%27=%5b10(y-x),x*(28-z)-y,x*y-8/3*z%5d;%20p:=%5b0,1,0,20%5d;%20t1:=40;%20tw:=40;;scale(5),P(0,20)"
+  >Projection on the xz plane</a>.
 </ul>
 
 <br>
@@ -237,9 +243,9 @@
   >A hyperboloid</a>.
 <li><a href="plot-implicit.htm?(x%5e2+y%5e2+z%5e2+R%5e2-r%5e2)%5e2=4R%5e2*(x%5e2+y%5e2);%20R:=4,r:=2,w(14)"
   >A torus</a>.
-<li><a href="plot-implicit.htm?x%5e2+y%5e2+x*z%5e2=r%5e2;%20slider(r,0,4);;scale(0.5)"
+<li><a href="plot-implicit.htm?x%5e2+y%5e2-r*z%5e2=1;%20slider(r,-1,1);;scale(0.5)"
   >Slider for one parameter</a>.
-<li><a href="plot-implicit.htm?x%5e2+y%5e2+x*abs(z)%5ea=r%5e2;%20slider(r,0,4),slider(a,1,4);;scale(0.5)"
+<li><a href="plot-implicit.htm?x%5e2+y%5e2+a*(x*y)%5e2-r*z%5e2=1;%20slider(r,-1,4),slider(a,-1,2);;scale(0.5)"
   >Sliders for two parameters</a>.
 </ul>
 
@@ -247,9 +253,11 @@
 <h3 id="vector-fields">Vector fields</h3>
 <ul>
 <li><a href="vector-field.htm?%5bx,y%5d"
-  >A vector field</a>.
+  >A vector field</a>. <a href="vector-field.htm?%5bx,y%5d;%20stream(1)"
+  >Stream lines</a>.
 <li><a href="vector-field.htm?y%27=x*y,%20%5b1,x*y%5d;%20p:=%5b0,1%5d"
-  >Slope field of an ODE</a>.
+  >Slope field of an ODE</a>. <a href="vector-field.htm?y%27=x*y,%20%5b1,x*y%5d;%20p:=%5b0,1%5d;%20stream(1)"
+  >Stream lines</a>.
 <li><a href="vector-field.htm?(y%27=y-x;%20p:=%5b0,n%5d)%20for%20n%20in%20-4:4,%20%5b1,y-x%5d"
   >A slope field and solution curves</a>.
 <li><a href="vector-field.htm?nabla(U,%5bx,y%5d);%20U(x,y):=1/abs(%5bx,y%5d);;scale(0.1)"
@@ -287,6 +295,8 @@
   >Integral representation of the complex logarithm</a>.
 <li><a href="plot-complex.htm?int(%5b0,20%5d,t.t%5e(z-1)*e%5e(-t))"
   >Integral representation of the gamma function</a>.
+<li><a href="riemann.htm"
+  >A Riemann surface</a>.
 </ul>
 
 <br>

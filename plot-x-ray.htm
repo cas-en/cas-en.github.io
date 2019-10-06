@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <title>plot</title>
-  <link rel="stylesheet" href="css/ui-dark.css">
   <meta name="viewport" content="width=device-width,minimum-scale=1">
+  <link rel="stylesheet" href="css/ui.css">
   <script src = "js/plot.js"></script>
   <script src = "js/plot-complex.js"></script>
-  <script src = "js/plot-fractal.js"></script>
+  <script src = "js/x-ray.js"></script>
 </head>
 <body>
 
@@ -23,7 +23,7 @@
 <input type="button" value="&minus;" onclick="xyscale_dec()">
 <br>
 <input type="text" id="inputf" spellcheck="false"
-onkeyup="keys(event);" value="z^2+c">
+onkeyup="keys(event);" value="z">
 
 <br>
 <div id="adds"></div>
@@ -35,7 +35,7 @@ onkeyup="keys(event);" value="z^2+c">
 <input type="button" value="y&minus;" onclick="yscale_dec()">
 <input type="button" value="Link" onclick="link(true)">
 <input type="button" value="Img" onclick="calc_img()">
-&nbsp;<a href="doc-complex.htm">Help</a>
+&nbsp;<a href="doc-komplex.htm">Help</a>
 <br><br>
 <input type="button" value="Calculate" onclick="calc()">
 <input type="text" id="input-calc" spellcheck="false"

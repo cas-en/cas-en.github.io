@@ -230,6 +230,11 @@ function equation(t){
     eval_node(t);
 }
 
+function round_prec(x,n){
+    var m = Math.pow(10,n);
+    return Math.round(m*x)/m;
+}
+
 var slider_table = {};
 
 function slider(t){
@@ -245,7 +250,7 @@ function slider(t){
     
     var range = [a,b];
     slider_table[id] = range;
-    ftab[id] = a;
+    ftab_set(id,a);
 
     var slider = document.createElement("input");
     slider.setAttribute("type","range");
@@ -261,9 +266,13 @@ function slider(t){
 
     slider.addEventListener("input",function(){
         var t = this.value/100;
-        ftab[id] = range[0]*(1-t)+range[1]*t;
+        var x = range[0]*(1-t)+range[1]*t;
+        var size = 100/Math.abs(range[1]-range[0]);
+        var n = 1+Math.round(Math.max(0,lg(size)));
+        x = round_prec(x,n);
+        ftab_set(id,x);
         graphics.animation = true;
-        out.innerHTML = ftos_strip(ftab[id],100/Math.abs(range[1]-range[0]));
+        out.innerHTML = x;
         update(graphics);
     });
     slider.addEventListener("change",function(){
@@ -335,13 +344,15 @@ function arrow(gx,color,x,y,vx,vy){
     var m = 20/Math.hypot(vx,vy);
     var x2 = x1+ax*gx.mx*vx;
     var y2 = y1-ay*gx.my*vy;
-    line(gx,color,x1,y1,x2,y2);
-    var a = 0.5*m;
-    var Lb = [0.2,0.14,0.07]
-    for(var i=0; i<Lb.length; i++){
-        var b = Lb[i]*m;
-        line(gx,color,x2,y2,x2-a*vx-b*vy,y2+a*vy-b*vx);
-        line(gx,color,x2,y2,x2-a*vx+b*vy,y2+a*vy+b*vx);
+    if(Math.abs(x2-x1)<200000 && Math.abs(y2-y1)<200000){
+        line(gx,color,x1,y1,x2,y2);
+        var a = 0.5*m;
+        var Lb = [0.2,0.14,0.07]
+        for(var i=0; i<Lb.length; i++){
+            var b = Lb[i]*m;
+            line(gx,color,x2,y2,x2-a*vx-b*vy,y2+a*vy-b*vx);
+            line(gx,color,x2,y2,x2-a*vx+b*vy,y2+a*vy+b*vx);
+        }
     }
 }
 
@@ -416,5 +427,4 @@ extension_table.cmd = {
     "=": equation, slider: slider, Regler: slider,
     ani: ani, vec: vec, line: cmd_line, chain: cmd_chain
 };
-
 

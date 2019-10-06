@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <title>plot</title>
+  <link rel="stylesheet" href="css/ui.css">
+  <meta name="viewport" content="width=device-width,minimum-scale=1">
   <script src = "js/plot.js"></script>
   <script src = "js/plot-complex.js"></script>
   <script src = "js/cplot.js"></script>
-  <script>dark=false;</script>
-  <link rel="stylesheet" href="css/ui.css">
 </head>
 <body>
 
@@ -26,6 +26,7 @@
 onkeyup="keys(event);" value="im(exp(i*x))">
 
 <br>
+<div id="adds"></div>
 <div id="out" class="mono"></div>
 <div class="hud" id="hud">
 <input type="button" value="x+" onclick="xscale_inc()">
