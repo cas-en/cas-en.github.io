@@ -1535,7 +1535,7 @@ var id_type_table = {
     "unit": [TypeVector],
     "nabla": [TypeVector],
     "rot": [TypeMatrix],
-    "I": [TypeMatrix],
+    "idm": [TypeMatrix],
     "diag": [TypeMatrix],
     "tp": [TypeMatrix],
     "expm": [TypeMatrix],

@@ -195,7 +195,7 @@ function plot_node(gx,t,color){
             ftab["p"] = a;
             ftab["L"] = len;
             var adds = document.getElementById("adds");
-            adds.innerHTML = "<p>Pfadlänge: "+len.toFixed(4);
+            adds.innerHTML = "<p>Path length: "+len.toFixed(4);
         }
     }else{
         plot_node_basic(gx,t,color);
